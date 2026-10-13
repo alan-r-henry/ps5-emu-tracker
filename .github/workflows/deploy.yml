@@ -156,3 +156,33 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  # Tells Bing, Yandex and other IndexNow engines the page has changed, so they recrawl it without waiting.
+  # Runs once a day (the midnight UTC collection) plus on pushes and manual runs, to stay well under
+  # IndexNow's rate limits. The key isn't a secret: it's published at KEY_URL to prove the site is ours.
+  # A failed ping only warns; it never fails the run.
+  indexnow:
+    needs: deploy
+    if: ${{ !cancelled() && needs.deploy.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    env:
+      SITE: https://alan-r-henry.github.io/ps5-emu-tracker/
+      KEY: 2081ad7c27b7fe7fcaee742d1ed6d703
+    steps:
+      - name: Notify search engines
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = schedule ] && [ "$(date -u +%H)" -ge 3 ]; then
+            echo "Already notified today."; exit 0
+          fi
+          body=$(printf '{"host":"alan-r-henry.github.io","key":"%s","keyLocation":"%s%s.txt","urlList":["%s"]}' \
+            "$KEY" "$SITE" "$KEY" "$SITE")
+          code=$(curl -sS -o response.txt -w '%{http_code}' --max-time 30 -X POST https://api.indexnow.org/indexnow \
+            -H 'Content-Type: application/json; charset=utf-8' --data "$body" || echo 000)
+          case "$code" in
+            200|202) echo "IndexNow accepted the update (HTTP $code)." ;;
+            *) echo "::warning::IndexNow returned HTTP $code: $(head -c 300 response.txt 2>/dev/null)" ;;
+          esac
