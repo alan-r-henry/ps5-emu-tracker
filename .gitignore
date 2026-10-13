@@ -1,0 +1,19 @@
+# Rebuilt by the collector; on GitHub they live on the "data" branch
+cache/
+out/
+history/
+web/public/data/*
+!web/public/data/fund.json
+
+# For the claude.ai tracker page, not this site
+docs/
+/index.html
+
+# Build output and packages
+web/node_modules/
+web/dist/
+web/.angular/
+
+# Local backups and Python bytecode
+*.bak
+__pycache__/

@@ -1,0 +1,22 @@
+{
+  "_help": "This file is public. Add one entry to 'donations' per payment received: {\"date\": \"YYYY-MM-DD\", \"amount\": rupees received, \"via\": \"upi\" or \"kofi\", \"name\": \"only if the donor agreed to be named\"}. Leave out 'name' for Anonymous. For Ko-fi, log the rupees that reached your account. The site adds up the total and supporters itself. Keep donors' phone numbers, UPI IDs and transaction references out of this file.",
+  "title": "Fund my dream bike",
+  "pitch": "If this tracker is useful to you, chip in towards my dream bike.",
+  "bikePrice": 650000,
+  "fees": {
+    "kofiSharePercent": 20,
+    "paypalPercent": 4.4,
+    "gstOnFeePercent": 18
+  },
+  "tax": {
+    "ratePercent": 30,
+    "cessPercent": 4
+  },
+  "roundTo": 100000,
+  "donations": [],
+  "upi": {
+    "id": "dream1999@ptyes",
+    "name": "Alan Henry"
+  },
+  "kofi": ""
+}

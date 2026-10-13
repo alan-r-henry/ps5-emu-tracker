@@ -1,0 +1,158 @@
+# Collects the latest emulator data every 3 hours, builds the site and publishes it to GitHub Pages.
+#
+# Security model:
+# - Every job starts with no permissions and gets only what it needs.
+# - The collector can write only to the "data" branch. "main" is protected by a ruleset that lets only
+#   the repository admin push, so nothing in this workflow can change the code or fund.json.
+# - The build copies an allow-list of data files from "data", so a stray file there (a fund.json, say)
+#   can never reach the site, and stops if the UPI ID differs from the EXPECTED_UPI_ID variable.
+# - Packages install from the lockfile with install scripts disabled; the build job holds no secrets.
+# - Deployment uses GitHub's short-lived OIDC token, so there is no long-lived deploy key to steal.
+# - Third-party code is limited to GitHub's own actions, each pinned to a full commit SHA.
+name: Collect and deploy
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 */3 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write # pushes to the "data" branch only; main's ruleset blocks this token
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: code
+          persist-credentials: false
+
+      - name: Check out previous data
+        id: state
+        continue-on-error: true # the first run has no data branch yet
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: data
+          path: state
+          persist-credentials: false
+
+      - name: Run collector
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p work/history work/cache work/out
+          cp code/collect.py work/
+          backfill=--backfill
+          if [ -d state/history ]; then
+            cp state/history/*.json work/history/
+            backfill=
+          fi
+          if [ -f state/cache/store_info.json ]; then cp state/cache/store_info.json work/cache/; fi
+          python3 -I work/collect.py work $backfill
+
+      - name: Publish to the data branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          mkdir -p publish/history publish/out publish/cache
+          cp work/history/*.json publish/history/
+          cp work/out/*.json publish/out/
+          if [ -f work/cache/store_info.json ]; then cp work/cache/store_info.json publish/cache/; fi
+          cd publish
+          git init -q -b data
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -q -m "Collected data $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q --force "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" data
+
+  build:
+    needs: collect
+    if: ${{ !cancelled() }} # still deploys the last good data if collection failed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: code
+          persist-credentials: false
+
+      - name: Check out collected data
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: data
+          path: state
+          persist-credentials: false
+
+      - name: Copy collected data (allow-list only)
+        run: |
+          for f in snapshots compat_history daily_activity recent_merges anyps5_libraries satellites playable_games gta top_contributors; do
+            cp "state/out/$f.json" "code/web/public/data/$f.json"
+          done
+
+      - name: Check the payment details
+        env:
+          EXPECTED: ${{ vars.EXPECTED_UPI_ID }}
+          EXPECTED_KOFI: ${{ vars.EXPECTED_KOFI_URL }}
+        run: |
+          actual=$(python3 -I -c "import json; print(json.load(open('code/web/public/data/fund.json'))['upi']['id'])")
+          if [ -z "$EXPECTED" ] || [ "$actual" != "$EXPECTED" ]; then
+            echo "::error::fund.json has UPI ID '$actual' but the EXPECTED_UPI_ID repository variable is '$EXPECTED'. Deploy stopped."
+            exit 1
+          fi
+          kofi=$(python3 -I -c "import json; print(json.load(open('code/web/public/data/fund.json')).get('kofi') or '')")
+          if [ "$kofi" != "$EXPECTED_KOFI" ]; then
+            echo "::error::fund.json has Ko-fi link '$kofi' but the EXPECTED_KOFI_URL repository variable is '$EXPECTED_KOFI'. Deploy stopped."
+            exit 1
+          fi
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Install packages
+        working-directory: code/web
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Build
+        working-directory: code/web
+        run: npx --no-install ng build --configuration production
+
+      - name: Write the day's figures into the page for search engines
+        run: python3 -I code/seo.py code/web/dist/web/browser
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: code/web/dist/web/browser
+
+  deploy:
+    needs: build
+    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

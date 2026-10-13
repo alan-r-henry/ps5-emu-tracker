@@ -1,0 +1,338 @@
+<div class="page">
+  <header class="masthead" id="top">
+    <div class="masthead-top">
+      <div class="masthead-text">
+        <p class="eyebrow">PS5 emulation on PC · daily progress</p>
+        <h1>PS5 Emulation Tracker</h1>
+      </div>
+      <app-fund />
+    </div>
+    <div class="livebar" role="status">
+      <span class="pulse" [class.on]="!!svc.liveAt()" [class.busy]="svc.loading()" aria-hidden="true"></span>
+      <span>{{ liveStatus() }}</span>
+      @if (savedThrough(); as d) {
+        <span class="muted with-icon"><app-icon name="history" [size]="14" />History saved through {{ longDate(d) }}</span>
+      }
+      <button type="button" class="btn with-icon" (click)="refresh()" [disabled]="svc.loading()">
+        <app-icon name="refresh" [size]="14" [class.spin]="svc.loading()" />{{ svc.loading() ? 'Refreshing…' : 'Refresh now' }}
+      </button>
+      <div class="theme-switch" role="group" aria-label="Colour theme">
+        @for (t of themes; track t.value) {
+          <button type="button" [attr.aria-pressed]="theme() === t.value" (click)="setTheme(t.value)" [attr.aria-label]="t.label + ' theme'" [title]="t.label"><app-icon [name]="t.icon" [size]="15" /></button>
+        }
+      </div>
+    </div>
+    @if (svc.problems().length || svc.historyError()) {
+      <ul class="problems">
+        @if (svc.historyError(); as e) { <li><app-icon name="alert" [size]="15" />{{ e }}</li> }
+        @for (p of svc.problems(); track p) { <li><app-icon name="alert" [size]="15" />{{ p }}. Showing saved figures instead.</li> }
+      </ul>
+    }
+  </header>
+
+  <main>
+    <section class="sec" id="projects" aria-labelledby="projects-h">
+      <div class="sec-head">
+        <h2 id="projects-h"><app-icon name="grid" [size]="20" />Projects</h2>
+        <p class="note">Each project measures progress differently, so the main figure differs per card. Figures marked <span class="tag live">live</span> were fetched just now; the rest come from the last saved snapshot. "Today" is the current UTC day.</p>
+      </div>
+      <div class="grid">
+        @for (c of cards(); track c.def.name) {
+          <article class="card project" [id]="'card-' + c.def.name" [style.--accent]="c.def.color">
+            <header class="card-head">
+              <h3><span class="swatch" aria-hidden="true"></span>{{ c.def.name }}</h3>
+              <a class="gh-link" [href]="c.mergesUrl" target="_blank" rel="noopener" [attr.aria-label]="c.def.name + ' on GitHub'" title="Open on GitHub">
+                <app-icon name="github" [size]="20" />
+              </a>
+            </header>
+            <p class="note">{{ c.def.approach }}</p>
+            <div class="big">{{ c.headline }}</div>
+            <div class="big-label">
+              {{ c.headlineLabel }}
+              <span class="tag" [class.live]="c.live">{{ c.live ? 'live' : 'saved' }}</span>
+            </div>
+            <div class="delta with-icon" [class.up]="c.deltaUp" [class.down]="c.deltaDown">
+              <app-icon [name]="c.deltaUp ? 'trendUp' : c.deltaDown ? 'trendDown' : c.delta ? 'minus' : 'clock'" [size]="14" />{{ c.delta ?? 'Weekly change appears after 7 days of history' }}
+            </div>
+            <div class="stat-groups">
+              @for (g of c.groups; track g.title) {
+                <section class="stat-group" [attr.aria-label]="c.def.name + ' ' + g.title">
+                  <h4><app-icon [name]="g.icon" [size]="13" />{{ g.title }}</h4>
+                  <dl>
+                    @for (s of g.stats; track s.label) {
+                      <div>
+                        <dt>{{ s.label }}</dt>
+                        <dd>{{ s.value }}@if (s.live) {<span class="dot" title="Live"></span>}</dd>
+                      </div>
+                    }
+                  </dl>
+                </section>
+              }
+            </div>
+          </article>
+        }
+      </div>
+    </section>
+
+    <app-gta [libraryShare]="anyLibShare()" />
+
+    <section class="sec" id="road" aria-labelledby="road-h">
+      <div class="sec-head">
+        <h2 id="road-h"><app-icon name="flag" [size]="20" />Road to 100%</h2>
+        <p class="note">Progress against the full PS5 catalog of {{ fmt(catalog()) }} titles, plus AnyPS5's own count of system functions and shader instructions. Projected finish dates assume the recent pace holds in a straight line; real progress comes in bursts, so treat them as a rough guess.</p>
+      </div>
+      <div class="grid">
+        @for (r of road(); track r.def.name) {
+          <article class="card" [id]="'road-' + r.def.name" [style.--accent]="r.def.color">
+            <h3><span class="swatch" aria-hidden="true"></span>{{ r.def.name }}</h3>
+            @if (!r.rows.length) { <p class="note">Waiting for data…</p> }
+            <div class="road">
+              @for (row of r.rows; track row.metric) {
+                <div class="road-row">
+                  <div class="road-top">
+                    <span>{{ row.metric }}</span>
+                    <span class="num">{{ fmt(row.done) }} of {{ fmt(row.total) }} · {{ pct(row.share) }} · {{ fmt(row.left) }} left</span>
+                  </div>
+                  <div class="track" role="progressbar" [attr.aria-valuenow]="row.done" aria-valuemin="0" [attr.aria-valuemax]="row.total" [attr.aria-label]="row.metric">
+                    <div class="fill" [style.width.%]="row.share * 100"></div>
+                  </div>
+                </div>
+              }
+            </div>
+            @if (r.etas.length) {
+              <div class="road-eta">
+                <h4 class="with-icon"><app-icon name="clock" [size]="14" />Projected finish</h4>
+                @for (e of r.etas; track e.goal) {
+                  <div class="road-eta-row">
+                    <span>{{ e.goal }}</span>
+                    <strong>{{ e.text }}</strong>
+                    @if (e.detail) { <span class="note">{{ e.detail }}</span> }
+                  </div>
+                }
+              </div>
+            }
+          </article>
+        }
+      </div>
+    </section>
+
+    <section class="sec" id="activity" aria-labelledby="activity-h">
+      <div class="sec-head">
+        <h2 id="activity-h"><app-icon name="merge" [size]="20" />Merged pull requests per day</h2>
+        <p class="note">Last 30 days; today's bar (dashed outline) is live. Each chart has its own scale: AnyPS5 merges many small automated PRs, so its counts run far higher.</p>
+      </div>
+      <div class="grid">
+        @for (a of activity(); track a.def.name) {
+          <article class="card" [id]="'activity-' + a.def.name" [style.--accent]="a.def.color">
+            <header class="card-head">
+              <h3><span class="swatch" aria-hidden="true"></span>{{ a.def.name }}</h3>
+              <span class="note num">{{ fmt(a.total) }} in 30 days</span>
+            </header>
+            @if (a.data.length) {
+              <app-bar-chart [data]="a.data" [color]="a.def.color" [label]="a.def.name + ' merged pull requests per day'" />
+            } @else {
+              <div class="chart skeleton"></div>
+            }
+          </article>
+        }
+      </div>
+    </section>
+
+    <section class="sec" id="games" aria-labelledby="games-h">
+      <div class="sec-head">
+        <h2 id="games-h"><app-icon name="gamepad" [size]="20" />Game compatibility</h2>
+      </div>
+      <div class="grid two">
+        <article class="card" id="toptier">
+          <h3><app-icon name="trendUp" [size]="16" />Games at the top tier over time</h3>
+          <p class="note">KytyPS5's top tier is "in-game" (it has no "playable" tier); SharpEmu's and AnyPS5's is "playable". The hollow point at the end of each line is live. AnyPS5's history starts Oct 13, 2026.</p>
+          <div class="legend">
+            @for (s of topSeries(); track s.name) {
+              <span><i [style.background]="s.color"></i>{{ s.name }}</span>
+            }
+          </div>
+          @if (topSeries().length) {
+            <app-line-chart [series]="topSeries()" label="Games at each project's top compatibility tier over time" />
+          } @else {
+            <div class="chart tall skeleton"></div>
+          }
+        </article>
+        <article class="card" id="ladder">
+          <h3><app-icon name="layers" [size]="16" />Tested games by status</h3>
+          <p class="note">Lowest stage on the left, top tier on the right; bar length is the number of tested games. AnyPS5 counts titles with a verified stage on its community blocker map.</p>
+          @if (!ladder().length) { <div class="chart tall skeleton"></div> }
+          <div class="ladder">
+            @for (g of ladder(); track g.def.name) {
+              <div class="ladder-row" [style.--accent]="g.def.color">
+                <div class="ladder-title">
+                  <span>{{ g.def.name }}</span>
+                  <span class="note num">{{ fmt(g.total) }} tested · <span class="tag" [class.live]="g.live">{{ g.live ? 'live' : 'saved' }}</span></span>
+                </div>
+                <div class="stack" [style.width.%]="g.width">
+                  @for (s of g.segs; track s.label) {
+                    @if (s.games) {
+                      <div class="seg" [style.flex-grow]="s.games" [style.--seg]="s.color" [title]="s.label + ': ' + fmt(s.games)"></div>
+                    }
+                  }
+                </div>
+                <div class="seg-labels">
+                  @for (s of g.segs; track s.label) {
+                    <span><i [style.--seg]="s.color"></i>{{ s.label }} <b class="num">{{ fmt(s.games) }}</b></span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="sec" id="playable" aria-labelledby="playable-h">
+      <div class="sec-head">
+        <h2 id="playable-h"><app-icon name="play" [size]="20" />Playable games</h2>
+        <p class="note">Games at each project's top tier, most recently tested first. Popularity is the number of player ratings on the game's PlayStation Store page. FPS comes from what testers wrote in their reports, on their own hardware; many reports don't mention it. KytyPS5 has no "playable" tier, so its list is every game that reaches gameplay, including slow ones.</p>
+      </div>
+      <div class="tools">
+        <label class="search"><app-icon name="search" [size]="15" /><input id="game-q" type="search" placeholder="Search games" aria-label="Search playable games" (input)="onGameQuery($event)"></label>
+        <label class="sort-by with-icon"><app-icon name="sort" [size]="15" /><span class="sr-only">Sort games by</span>
+          <select id="game-sort" (change)="onGameSort($event)">
+            @for (o of gameSorts; track o.value) { <option [value]="o.value" [selected]="gameSort() === o.value">{{ o.label }}</option> }
+          </select>
+        </label>
+        @if (gameQuery()) { <span class="note num">{{ fmt(gameMatches()) }} matching</span> }
+      </div>
+      @if (svc.games() === null) {
+        <div class="card"><div class="chart skeleton"></div></div>
+      }
+      @for (block of playable(); track block.def.name) {
+        <div class="games-block" [id]="'playable-' + block.def.name" [style.--accent]="block.def.color">
+          <div class="games-head">
+            <h3><span class="swatch" aria-hidden="true"></span>{{ block.def.name }}</h3>
+            <span class="note num games-counts">
+              <span class="with-icon"><app-icon name="gamepad" [size]="14" />{{ gameQuery() ? fmt(block.games.length) + ' of ' : '' }}{{ fmt(block.total) }} {{ block.tier.toLowerCase() }}</span>
+              <span class="with-icon"><app-icon name="gauge" [size]="14" />FPS reported for {{ fmt(block.withFps) }}</span>
+              <span class="with-icon"><app-icon name="trendUp" [size]="14" />{{ fmt(block.smooth) }} at 30+ FPS</span>
+            </span>
+          </div>
+          @if (block.games.length) {
+            <div class="games-scroll" [class.long]="block.games.length > 12">
+              <ul class="games">
+                @for (g of block.games; track g.titleId) {
+                  <li class="game">
+                    <div class="cover">
+                      @if (g.cover && !brokenCovers().has(g.project + g.titleId)) {
+                        <img [src]="coverSrc(g, 320)" [attr.srcset]="coverSrc(g, 320) + ' 1x, ' + coverSrc(g, 640) + ' 2x'" width="320" height="320" [alt]="g.title + ' cover art'" loading="lazy" decoding="async" referrerpolicy="no-referrer" (error)="coverFailed(g)">
+                      } @else {
+                        <span class="cover-fallback" aria-hidden="true">{{ initials(g.title) }}</span>
+                      }
+                      <span [class]="'fps ' + fpsClass(g)"><app-icon name="gauge" [size]="13" />{{ g.fps ? g.fps + ' FPS' : 'FPS not reported' }}</span>
+                    </div>
+                    <div class="game-body">
+                      <h4 [title]="g.title">{{ g.title }}</h4>
+                      @if (g.ratings != null || g.released) {
+                        <p class="game-meta with-icon" [title]="(g.ratings != null ? fmt(g.ratings) + ' PlayStation Store ratings, average ' + g.rating + ' stars' : 'No store rating') + (g.released ? ' · released ' + longDate(g.released) : '')">
+                          <app-icon name="star" [size]="13" />
+                          <span>@if (g.ratings != null) { {{ g.rating }} · {{ compact(g.ratings) }} ratings } @else { No ratings }@if (g.released) { · {{ g.released.slice(0, 4) }} }</span>
+                        </p>
+                      }
+                      @if (gpu(g.hardware); as hw) { <p class="game-meta with-icon" title="Tester's GPU"><app-icon name="cpu" [size]="13" />{{ hw }}</p> }
+                      @if (g.os) { <p class="game-meta with-icon" title="Tester's OS"><app-icon name="monitor" [size]="13" />{{ g.os }}</p> }
+                      @if (g.fps_note) { <p class="game-quote">“{{ g.fps_note }}”</p> }
+                      <p class="game-meta game-foot">
+                        @if (g.tested) { <span class="with-icon" title="Date tested"><app-icon name="calendar" [size]="13" />Tested {{ longDate(g.tested) }}</span> }
+                        @if (g.url) { <a class="with-icon" [href]="g.url" target="_blank" rel="noopener">Report<app-icon name="external" [size]="12" /></a> }
+                      </p>
+                    </div>
+                  </li>
+                }
+              </ul>
+            </div>
+          } @else if (svc.games() !== null) {
+            <p class="note">{{ gameQuery() && block.total ? 'No games match your search.' : 'No games at this tier yet.' }}</p>
+          }
+        </div>
+      }
+    </section>
+
+    <app-contributors />
+
+    <section class="sec" id="others" aria-labelledby="others-h">
+      <div class="sec-head">
+        <h2 id="others-h"><app-icon name="layers" [size]="20" />Other projects</h2>
+        <p class="note">Forks, ports and smaller emulators, for context. Commits counted over the last 30 days, from the last saved snapshot.</p>
+      </div>
+      <div class="tablebox">
+        <table>
+          <thead>
+            <tr><th>Repository</th><th>What it is</th><th class="n"><span class="with-icon"><app-icon name="star" [size]="13" />Stars</span></th><th class="n"><span class="with-icon"><app-icon name="commit" [size]="13" />Commits</span></th><th><span class="with-icon"><app-icon name="clock" [size]="13" />Last push</span></th></tr>
+          </thead>
+          <tbody>
+            @for (s of satellites(); track s.repo) {
+              <tr>
+                <td class="nowrap"><a class="with-icon" [href]="'https://github.com/' + s.repo" target="_blank" rel="noopener"><app-icon name="github" [size]="14" />{{ s.repo }}</a></td>
+                <td>{{ s.role }}@if (s.archived) { <span class="tag with-icon"><app-icon name="archive" [size]="12" />archived</span> }</td>
+                <td class="n num">{{ fmt(s.stars) }}</td>
+                <td class="n num">{{ fmt(s.commits_30d) }}</td>
+                <td class="num nowrap">{{ longDate(s.last_push) }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="note">No saved data yet.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="sec faq" id="faq" aria-labelledby="faq-h">
+      <h2 id="faq-h"><app-icon name="info" [size]="20" />Questions</h2>
+      <details open>
+        <summary>Can I play GTA 6 on PC with a PS5 emulator?</summary>
+        <p>Not yet. GTA 6 comes out on PS5 and Xbox Series X|S on November 19, 2026, and Rockstar hasn't announced a PC version. No PS5 emulator can run it until the game is out and people test it. The <a href="#gta6">GTA 6 readiness score</a> above tracks the milestones that have to fall first.</p>
+      </details>
+      <details>
+        <summary>Does GTA V run on PS5 emulators?</summary>
+        <p>The PS5 version of GTA V gets in-game on KytyPS5 and SharpEmu, and reaches the menus on AnyPS5. It uses the same RAGE engine as GTA 6, which makes it the best early sign of how GTA 6 will fare. The table in the GTA 6 section shows the latest result for each emulator.</p>
+      </details>
+      <details>
+        <summary>Is there a working PS5 emulator?</summary>
+        <p>Yes, in early form. AnyPS5, KytyPS5 and SharpEmu all run some PS5 games on Windows today. About 200 games reach gameplay on at least one of them, out of more than 9,000 PS5 titles; see <a href="#playable">Playable games</a> for the list, with frame rates where testers reported them.</p>
+      </details>
+      <details>
+        <summary>Which PS5 emulator is the most advanced?</summary>
+        <p>It depends on the measure. AnyPS5 publishes the most detailed progress figure, the share of PS5 system functions it implements; KytyPS5 gets the most games in-game; SharpEmu has the most games marked fully playable. The <a href="#projects">project cards</a> show each one's figures, updated live.</p>
+      </details>
+      <details>
+        <summary>Is PS5 emulation legal?</summary>
+        <p>Emulators themselves are generally legal to make and use. Downloading games you don't own is piracy. These projects expect you to use your own console's games and firmware. Beware sites offering "PS5 emulator downloads": the real projects are free and only on the GitHub pages linked below.</p>
+      </details>
+      <details>
+        <summary>How often is this tracker updated?</summary>
+        <p>Live figures load from GitHub and each project's site when you open the page, and every 15 minutes after that. Daily history, game lists and the GTA 6 score update every 3 hours.</p>
+      </details>
+    </section>
+
+    <section class="sec method" id="method" aria-labelledby="method-h">
+      <h2 id="method-h"><app-icon name="info" [size]="20" />How this is measured</h2>
+      <ul>
+        <li>No emulator publishes an overall "% complete". The figures here are the closest each project offers: AnyPS5's progress report and community blocker map, and the KytyPS5 and SharpEmu community compatibility lists.</li>
+        <li>AnyPS5's library percentage covers only the functions it has catalogued so far. The total grows as more are found, so the percentage can go down.</li>
+        <li>Compatibility lists only include games someone has tested and reported, and statuses can lag behind the latest build.</li>
+        <li>AI-assisted commits are commits on the main branch in the last 30 days that name an AI coding agent (Claude, Copilot, Codex, Cursor, Devin, Jules or Gemini) as author or co-author. Agent use that isn't disclosed in the commit can't be seen, so this is a floor.</li>
+        <li>Projected finish dates assume the average pace of the last 90 days of saved history carries on unchanged, and need at least 21 days of it. They're a rough guess, not a promise; real progress comes in bursts, and the catalog keeps growing.</li>
+        <li>Live figures load straight from GitHub and each project's site when the page opens, and again every 15 minutes. GitHub allows about 6 full refreshes an hour from one network without signing in; past that, the page shows saved figures. History comes from the collector, which runs every 3 hours.</li>
+        <li>Watch out for copycat repositories offering "official downloads" of these projects. Use only the repositories linked here.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="foot note">
+    Sources:
+    <a class="with-icon" href="https://github.com/boykopovar/AnyPS5" target="_blank" rel="noopener"><app-icon name="github" [size]="13" />AnyPS5</a> ·
+    <a class="with-icon" href="https://boykopovar.github.io/AnyPS5/" target="_blank" rel="noopener"><app-icon name="globe" [size]="13" />AnyPS5 progress</a> ·
+    <a class="with-icon" href="https://alxcbtw.github.io/anyps5-roadmap/" target="_blank" rel="noopener"><app-icon name="globe" [size]="13" />AnyPS5 blocker map</a> ·
+    <a class="with-icon" href="https://github.com/KytyPS5/KytyPS5" target="_blank" rel="noopener"><app-icon name="github" [size]="13" />KytyPS5</a> ·
+    <a class="with-icon" href="https://kytyps5.github.io/" target="_blank" rel="noopener"><app-icon name="globe" [size]="13" />KytyPS5 compatibility</a> ·
+    <a class="with-icon" href="https://github.com/sharpemu/sharpemu" target="_blank" rel="noopener"><app-icon name="github" [size]="13" />SharpEmu</a> ·
+    <a class="with-icon" href="https://sharpemu.app" target="_blank" rel="noopener"><app-icon name="globe" [size]="13" />SharpEmu compatibility</a>
+  </footer>
+</div>

@@ -1,0 +1,95 @@
+<!doctype html>
+<!--
+  The published page (angular.json swaps it in for production builds). Two jobs:
+  1. Security: the Content Security Policy only lets this page run its own scripts, load its own styles and
+     fonts, show images from itself and PlayStation's image server, and fetch data from the listed project
+     sites. Inline scripts, plugins, forms and <base> changes are all refused, so injected code can't run.
+  2. Search: title, description, canonical URL, social cards, structured data, and a plain-text summary
+     inside <app-root> for crawlers that don't run JavaScript (Angular replaces it on load). At deploy time
+     seo.py rewrites the summary, descriptions and structured data with the day's figures.
+  Keep src/index.html in step with anything here that the app itself needs.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: https://image.api.playstation.com https://avatars.githubusercontent.com https://*.goatcounter.com; connect-src 'self' https://api.github.com https://boykopovar.github.io https://alxcbtw.github.io https://kytyps5.github.io https://sharpemu.app; manifest-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'; upgrade-insecure-requests; require-trusted-types-for 'script'; trusted-types angular angular#bundler">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>PS5 Emulation Tracker: GTA 6, GTA V &amp; PS5 Emulators on PC</title>
+  <base href="/ps5-emu-tracker/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- seo.py rewrites the three descriptions with the day's figures at deploy time. -->
+  <meta name="description" content="Daily tracker of PS5 emulation on PC: progress of the AnyPS5, KytyPS5 and SharpEmu emulators, every playable PS5 game with frame rates, and a GTA 6 emulation readiness score.">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <meta name="theme-color" content="#0f141c">
+  <link rel="canonical" href="https://alan-r-henry.github.io/ps5-emu-tracker/">
+  <link rel="icon" href="favicon.ico" sizes="48x48">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="PS5 Emulation Tracker">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:title" content="PS5 Emulation Tracker: GTA 6, GTA V &amp; PS5 Emulators on PC">
+  <meta property="og:description" content="Daily progress of AnyPS5, KytyPS5 and SharpEmu, playable PS5 games with FPS, and how close GTA 6 is to running on PC through emulation.">
+  <meta property="og:url" content="https://alan-r-henry.github.io/ps5-emu-tracker/">
+  <meta property="og:image" content="https://alan-r-henry.github.io/ps5-emu-tracker/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="PS5 Emulation Tracker: daily progress of AnyPS5, KytyPS5 and SharpEmu">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PS5 Emulation Tracker: GTA 6, GTA V &amp; PS5 Emulators on PC">
+  <meta name="twitter:description" content="Daily progress of AnyPS5, KytyPS5 and SharpEmu, playable PS5 games with FPS, and how close GTA 6 is to running on PC through emulation.">
+  <meta name="twitter:image" content="https://alan-r-henry.github.io/ps5-emu-tracker/og-image.png">
+  <!-- Search Console: paste Google's verification tag here, e.g. <meta name="google-site-verification" content="..."> -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "name": "PS5 Emulation Tracker",
+        "url": "https://alan-r-henry.github.io/ps5-emu-tracker/",
+        "description": "Daily tracker of PS5 emulation on PC: AnyPS5, KytyPS5 and SharpEmu progress, playable PS5 games and GTA 6 emulation readiness."
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Can I play GTA 6 on PC with a PS5 emulator?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Not yet. GTA 6 comes out on PS5 and Xbox Series X|S on November 19, 2026, and Rockstar hasn't announced a PC version. No PS5 emulator can run it until the game is out and people test it. The GTA 6 readiness score on this page tracks the milestones that have to fall first." }
+          },
+          {
+            "@type": "Question",
+            "name": "Does GTA V run on PS5 emulators?",
+            "acceptedAnswer": { "@type": "Answer", "text": "The PS5 version of GTA V gets in-game on KytyPS5 and SharpEmu, and reaches the menus on AnyPS5. It uses the same RAGE engine as GTA 6, which makes it the best early sign of how GTA 6 will fare." }
+          },
+          {
+            "@type": "Question",
+            "name": "Is there a working PS5 emulator?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Yes, in early form. AnyPS5, KytyPS5 and SharpEmu all run some PS5 games on Windows today. About 200 games reach gameplay on at least one of them, out of more than 9,000 PS5 titles." }
+          },
+          {
+            "@type": "Question",
+            "name": "Is PS5 emulation legal?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Emulators themselves are generally legal to make and use. Downloading games you don't own is piracy. Beware sites offering PS5 emulator downloads: the real projects are free and only on their GitHub pages." }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+  <script src="theme.js"></script>
+</head>
+<body>
+  <app-root>
+    <main>
+      <h1>PS5 Emulation Tracker</h1>
+      <p>Daily progress of PS5 emulation on PC: the AnyPS5, KytyPS5 and SharpEmu emulators, every PS5 game that reaches gameplay with its frame rate, and a GTA 6 emulation readiness score built from checkable milestones.</p>
+      <h2>Can I play GTA 6 on PC with a PS5 emulator?</h2>
+      <p>Not yet. GTA 6 comes out on PS5 and Xbox Series X|S on November 19, 2026, with no PC version announced. GTA V's PS5 version, on the same RAGE engine, already gets in-game on KytyPS5 and SharpEmu.</p>
+      <p>Turn on JavaScript to see the live figures, charts and game list.</p>
+    </main>
+  </app-root>
+</body>
+</html>
