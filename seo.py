@@ -82,7 +82,9 @@ def gta_readiness(gta, lib_share, today):
 
 
 def build(data, today):
-    snaps = latest_snapshots(load(data, "snapshots", []))
+    all_snaps = load(data, "snapshots", [])
+    snaps = latest_snapshots(all_snaps)
+    first_day = min((s["date"][:10] for s in all_snaps if s.get("date")), default=today)
     games = load(data, "playable_games", [])
     gta = load(data, "gta", {})
     people = load(data, "top_contributors", {}).get("projects", {})
@@ -178,6 +180,11 @@ def build(data, today):
          "description": "Daily snapshots of PS5 emulator progress on PC: games reaching each compatibility stage "
                         "on AnyPS5, KytyPS5 and SharpEmu, project activity on GitHub, and GTA 6 readiness.",
          "url": SITE, "dateModified": today, "isAccessibleForFree": True,
+         "creator": {"@type": "Person", "name": "Alan Henry", "url": "https://github.com/alan-r-henry"},
+         "license": "https://creativecommons.org/licenses/by/4.0/",
+         "temporalCoverage": f"{first_day}/..",
+         "variableMeasured": ["Games reaching each compatibility stage", "Share of PS5 system functions implemented",
+                              "Merged pull requests", "Contributors", "GTA 6 readiness score"],
          "keywords": ["PS5 emulation", "PS5 emulator", "GTA 6 PS5 emulation", "AnyPS5", "KytyPS5", "SharpEmu"],
          "distribution": [{"@type": "DataDownload", "encodingFormat": "application/json",
                            "contentUrl": SITE + f"data/{n}.json"}
