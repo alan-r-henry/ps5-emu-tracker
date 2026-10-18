@@ -445,7 +445,12 @@ export class App {
     return g.page && GAME_PAGE.test(g.page) ? g.page : null;
   }
 
-  protected readonly hasGamePages = computed(() => (this.svc.games() ?? []).some((g) => this.gamePage(g)));
+  protected readonly hasGamePages = computed(() => this.gamePageCount() > 0);
+
+  /** Number of distinct game pages; a game listed by two emulators shares one page. */
+  protected readonly gamePageCount = computed(
+    () => new Set((this.svc.games() ?? []).map((g) => this.gamePage(g)).filter(Boolean)).size,
+  );
 
   protected fpsClass(g: PlayableGame): string {
     const v = g.fps_value;

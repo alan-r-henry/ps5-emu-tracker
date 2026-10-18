@@ -4,6 +4,7 @@
       <div class="masthead-text">
         <p class="eyebrow">PS5 emulation on PC · daily progress</p>
         <h1>PS5 Emulation Tracker</h1>
+        @if (gamePageCount(); as n) { <a class="masthead-games with-icon" href="games/"><app-icon name="grid" [size]="15" />Browse all {{ fmt(n) }} games that run on PC</a> }
       </div>
       <app-fund />
     </div>
@@ -219,7 +220,7 @@
             <div class="games-scroll" [class.long]="block.games.length > 12">
               <ul class="games">
                 @for (g of block.games; track g.titleId) {
-                  <li class="game">
+                  <li class="game" [class.linked]="!!gamePage(g)">
                     <div class="cover">
                       @if (g.cover && !brokenCovers().has(g.project + g.titleId)) {
                         <img [src]="coverSrc(g, 320)" [attr.srcset]="coverSrc(g, 320) + ' 1x, ' + coverSrc(g, 640) + ' 2x'" width="320" height="320" [alt]="g.title + ' cover art'" loading="lazy" decoding="async" referrerpolicy="no-referrer" (error)="coverFailed(g)">

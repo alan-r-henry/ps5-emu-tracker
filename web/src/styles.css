@@ -268,7 +268,15 @@ h3 { margin: 0; font-size: 16px; font-weight: 600; display: flex; align-items: c
 .tools .search input { flex: 1; padding-left: 32px; }
 .all-games { margin-left: auto; font-size: 14px; font-weight: 500; color: var(--accent-ui); }
 .game-body h4 a { color: inherit; text-decoration: none; }
-.game-body h4 a:hover { text-decoration: underline; }
+/* The whole tile opens the game's page: the title link's ::after covers the tile, and the Report link sits above it. */
+.game.linked { position: relative; transition: border-color 0.15s, box-shadow 0.15s; }
+.game.linked h4 a::after { content: ''; position: absolute; inset: 0; z-index: 1; }
+.game.linked:hover { border-color: var(--accent, var(--accent-ui)); box-shadow: var(--shadow); }
+.game.linked:hover h4 a { text-decoration: underline; }
+.game.linked:has(h4 a:focus-visible) { outline: 2px solid var(--accent-ui); outline-offset: 2px; }
+.game.linked h4 a:focus-visible { outline: none; }
+.game.linked .game-foot a { position: relative; z-index: 2; }
+.masthead-games { display: inline-flex; margin-top: 8px; font-size: 15px; font-weight: 500; color: var(--accent-ui); }
 .sort-by { color: var(--muted); gap: 8px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .tablebox { max-height: 30rem; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
