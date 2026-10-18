@@ -108,6 +108,8 @@ export interface PlayableGame {
   /** PlayStation Store rating count, used as the popularity measure, and the average star rating. */
   ratings: number | null;
   rating: number | null;
+  /** The game's static page (games/<slug>/), added by seo.py in the published build only. */
+  page?: string;
 }
 
 export interface History {

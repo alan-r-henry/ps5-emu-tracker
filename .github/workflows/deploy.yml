@@ -157,9 +157,9 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
-  # Tells Bing, Yandex and other IndexNow engines the page has changed, so they recrawl it without waiting.
+  # Tells Bing, Yandex and other IndexNow engines which pages changed, so they recrawl them without waiting.
   # Runs once a day (the midnight UTC collection) plus on pushes and manual runs, to stay well under
-  # IndexNow's rate limits. The key isn't a secret: it's published at KEY_URL to prove the site is ours.
+  # IndexNow's rate limits. The key isn't a secret: it's published at <SITE><KEY>.txt to prove the site is ours.
   # A failed ping only warns; it never fails the run.
   indexnow:
     needs: deploy
@@ -178,10 +178,22 @@ jobs:
           if [ "$EVENT" = schedule ] && [ "$(date -u +%H)" -ge 3 ]; then
             echo "Already notified today."; exit 0
           fi
-          body=$(printf '{"host":"alan-r-henry.github.io","key":"%s","keyLocation":"%s%s.txt","urlList":["%s"]}' \
-            "$KEY" "$SITE" "$KEY" "$SITE")
+          # A push or manual run sends every page (the templates may have changed); the daily run sends the
+          # home page, the A-Z index and the game pages whose status changed in the last 2 days.
+          curl -fsS --max-time 30 -o sitemap.xml "${SITE}sitemap.xml?run=${GITHUB_RUN_ID}" || : > sitemap.xml
+          python3 -I - "$EVENT" "$SITE" "$KEY" > body.json <<'PY'
+          import datetime as dt, html, json, re, sys
+          event, site, key = sys.argv[1:4]
+          xml = open("sitemap.xml", encoding="utf-8").read()
+          since = (dt.datetime.now(dt.timezone.utc).date() - dt.timedelta(days=2)).isoformat()
+          pairs = [(html.unescape(u), d) for u, d in re.findall(r"<loc>([^<]+)</loc>\s*<lastmod>([^<]+)</lastmod>", xml)]
+          urls = [u for u, d in pairs if u.startswith(site) and (event != "schedule" or d >= since)]
+          urls = list(dict.fromkeys([site, site + "games/", *urls]))[:10000]
+          print(json.dumps({"host": site.split("/")[2], "key": key, "keyLocation": f"{site}{key}.txt", "urlList": urls}))
+          PY
+          echo "Sending $(python3 -I -c 'import json; print(len(json.load(open("body.json"))["urlList"]))') URLs."
           code=$(curl -sS -o response.txt -w '%{http_code}' --max-time 30 -X POST https://api.indexnow.org/indexnow \
-            -H 'Content-Type: application/json; charset=utf-8' --data "$body" || echo 000)
+            -H 'Content-Type: application/json; charset=utf-8' --data @body.json || echo 000)
           case "$code" in
             200|202) echo "IndexNow accepted the update (HTTP $code)." ;;
             *) echo "::warning::IndexNow returned HTTP $code: $(head -c 300 response.txt 2>/dev/null)" ;;

@@ -94,8 +94,12 @@ rebuilds the compatibility history; later runs are quicker. The site appears at 
 3. **Bing Webmaster Tools** (https://www.bing.com/webmasters) can import the property from Search Console.
    Bing also feeds DuckDuckGo and others.
 4. **IndexNow** is already set up: after deploying, the workflow tells Bing, Yandex and other IndexNow
-   engines the page changed (once a day, plus every push). The key file is
-   `web/public/2081ad7c27b7fe7fcaee742d1ed6d703.txt`; keep it, and keep `KEY` in the workflow matching it.
+   engines which pages changed (every page on a push; once a day, the pages whose status changed). The key
+   file is `web/public/2081ad7c27b7fe7fcaee742d1ed6d703.txt`; keep it, and keep `KEY` in the workflow matching it.
+
+**Game pages.** On every deploy, `seo.py` writes a static page for each game that reaches gameplay
+(`games/<name>/`), an A-Z index at `games/`, and a sitemap listing them all. They're built from the day's data,
+so there's nothing to maintain; a game that drops off the list loses its page on the next deploy.
 
 Ranking takes weeks and depends heavily on other sites linking here. Posting the link where people
 discuss PS5 emulation (the projects' Discords, Reddit threads, GitHub discussions) helps most.

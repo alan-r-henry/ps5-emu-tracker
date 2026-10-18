@@ -440,6 +440,13 @@ export class App {
     return url.startsWith('https://image.api.playstation.com/') ? `${url}${url.includes('?') ? '&' : '?'}w=${width}` : url;
   }
 
+  /** The game's own page, when the published build has one. */
+  protected gamePage(g: PlayableGame): string | null {
+    return g.page && GAME_PAGE.test(g.page) ? g.page : null;
+  }
+
+  protected readonly hasGamePages = computed(() => (this.svc.games() ?? []).some((g) => this.gamePage(g)));
+
   protected fpsClass(g: PlayableGame): string {
     const v = g.fps_value;
     return v == null ? 'none' : v >= 55 ? 'good' : v >= 25 ? 'ok' : 'low';
@@ -465,6 +472,8 @@ export class App {
 type GameSort = 'tested' | 'title' | 'popularity' | 'released' | 'fps';
 
 /** Sorts a nullable field with missing values always last, whichever direction. */
+const GAME_PAGE = /^games\/[a-z0-9-]+\/$/;
+
 function by<T>(get: (g: PlayableGame) => T | null, dir: 1 | -1, cmp: (a: T, b: T) => number) {
   return (a: PlayableGame, b: PlayableGame): number => {
     const x = get(a);

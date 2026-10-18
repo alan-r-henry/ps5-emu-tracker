@@ -200,6 +200,7 @@
           </select>
         </label>
         @if (gameQuery()) { <span class="note num">{{ fmt(gameMatches()) }} matching</span> }
+        @if (hasGamePages()) { <a class="all-games with-icon" href="games/"><app-icon name="grid" [size]="14" />Every game, A to Z</a> }
       </div>
       @if (svc.games() === null) {
         <div class="card"><div class="chart skeleton"></div></div>
@@ -228,7 +229,7 @@
                       <span [class]="'fps ' + fpsClass(g)"><app-icon name="gauge" [size]="13" />{{ g.fps ? g.fps + ' FPS' : 'FPS not reported' }}</span>
                     </div>
                     <div class="game-body">
-                      <h4 [title]="g.title">{{ g.title }}</h4>
+                      <h4 [title]="g.title">@if (gamePage(g); as href) {<a [href]="href">{{ g.title }}</a>} @else { {{ g.title }} }</h4>
                       @if (g.ratings != null || g.released) {
                         <p class="game-meta with-icon" [title]="(g.ratings != null ? fmt(g.ratings) + ' PlayStation Store ratings, average ' + g.rating + ' stars' : 'No store rating') + (g.released ? ' · released ' + longDate(g.released) : '')">
                           <app-icon name="star" [size]="13" />

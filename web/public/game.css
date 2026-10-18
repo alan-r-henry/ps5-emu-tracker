@@ -1,0 +1,42 @@
+/* Styles for the static game pages that seo.py writes to games/. Colours and fonts come from the app's own
+   stylesheet, which those pages load first. */
+.gp { line-height: 1.55; }
+.gp a { color: var(--accent-ui); }
+.gp-top, .gp-main, .gp-foot { max-width: 960px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
+.gp-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.gp-top a { text-decoration: none; font-weight: 500; }
+.gp-brand { color: var(--fg) !important; font-weight: 600 !important; }
+.gp-main { display: block; padding-top: 20px; padding-bottom: 32px; }
+.gp-crumbs { font-size: 13px; color: var(--muted); margin-bottom: 20px; overflow-wrap: anywhere; }
+.gp h1 { font-size: clamp(26px, 4vw, 36px); line-height: 1.2; margin: 6px 0 12px; overflow-wrap: anywhere; }
+.gp h2 { font-size: 19px; margin: 0 0 8px; }
+.gp-hero { display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: start; margin-bottom: 24px; }
+.gp-cover { width: 200px; height: auto; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--line); background: var(--track); }
+.gp-lead { font-size: 17px; margin: 0 0 10px; }
+.gp-about { color: var(--muted); margin: 0; }
+.gp-emus { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; margin-bottom: 28px; }
+.gp-emu { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; min-width: 0; }
+.gp-emu.gp-ok { border-top: 4px solid var(--ok); }
+.gp-emu.gp-none { border-top: 4px solid var(--line); color: var(--muted); }
+.gp-emu.gp-none h2 { color: var(--fg); }
+.gp-status { font-family: var(--font-mono); font-weight: 500; font-size: 15px; margin: 0 0 10px; }
+.gp-ok .gp-status { color: var(--ok); }
+.gp-emu dl { margin: 0 0 10px; display: grid; gap: 6px; }
+.gp-emu dl div { display: grid; grid-template-columns: 7.5em 1fr; gap: 8px; }
+.gp-emu dt { color: var(--muted); font-size: 13px; }
+.gp-emu dd { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.gp-emu blockquote { margin: 0 0 10px; padding: 8px 12px; border-left: 3px solid var(--line); color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+.gp-emu p:last-child { margin-bottom: 0; }
+.gp-text { max-width: 70ch; margin-bottom: 24px; }
+.gp-related { columns: 2 220px; padding-left: 1.2em; margin: 0; }
+.gp-related li { margin-bottom: 4px; break-inside: avoid; }
+.gp-index { list-style: none; padding: 0; margin: 20px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 8px; }
+.gp-index li { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.gp-index a { font-weight: 500; overflow-wrap: anywhere; }
+.gp-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.gp-chip { font-family: var(--font-mono); font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--track); color: var(--muted); }
+.gp-foot { border-top: 1px solid var(--line); padding-top: 16px; padding-bottom: 32px; color: var(--muted); font-size: 13px; }
+@media (max-width: 560px) {
+  .gp-hero { grid-template-columns: 1fr; }
+  .gp-cover { width: 140px; }
+}
