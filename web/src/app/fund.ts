@@ -1,5 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, signal, viewChild } from '@angular/core';
 import QRCode from 'qrcode';
 import { Icon } from './icon';
 import { longDate } from './format';
@@ -156,7 +155,6 @@ function goalFor(f: FundConfig): Goal {
                 @if (f.upi.name) {
                   <p class="fund-verify with-icon"><app-icon name="check" [size]="14" />Before you pay, check your app shows the payee as <b>{{ f.upi.name }}</b>. If it shows any other name, don't pay.</p>
                 }
-                <a class="btn primary with-icon" [href]="upiHref()"><app-icon name="phone" [size]="15" />Pay {{ inr(amount()) }} with a UPI app</a>
                 <button type="button" class="btn with-icon" (click)="copyId(id)">
                   <app-icon [name]="copied() ? 'check' : 'copy'" [size]="14" />{{ copied() ? 'Copied' : id }}
                 </button>
@@ -183,7 +181,6 @@ function goalFor(f: FundConfig): Goal {
   `,
 })
 export class FundButton {
-  private readonly sanitizer = inject(DomSanitizer);
   protected readonly presets = PRESETS;
   protected readonly longDate = longDate;
   protected readonly fund = signal<FundConfig | null>(null);
@@ -235,7 +232,7 @@ export class FundButton {
     return /^https:\/\/ko-fi\.com\/\w+\/?$/.test(url) ? url : '';
   });
 
-  /** The standard UPI deep link (NPCI "upi://pay"); apps prefill the payee, amount and note. */
+  /** The standard UPI deep link (NPCI "upi://pay") the QR code carries; apps prefill the payee, amount and note. */
   protected readonly upiLink = computed(() => {
     const id = this.upiId();
     if (!id) return '';
@@ -248,15 +245,6 @@ export class FundButton {
     ];
     // The payee ID stays as written: some UPI apps don't decode "%40", and UPI_ID allows nothing that needs escaping.
     return `upi://pay?pa=${id}&` + q.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
-  });
-
-  /**
-   * Angular blocks unknown URL schemes such as upi:, so the link is marked safe explicitly. That's sound here:
-   * the payee ID has passed UPI_ID and every value is URI-encoded, so nothing else can reach the link.
-   */
-  protected readonly upiHref = computed<SafeUrl | null>(() => {
-    const link = this.upiLink();
-    return link ? this.sanitizer.bypassSecurityTrustUrl(link) : null;
   });
 
   constructor() {
