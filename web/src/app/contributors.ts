@@ -27,7 +27,7 @@ const AVATAR = /^https:\/\/avatars\.githubusercontent\.com\/u\/\d+\?v=\d+$/;
   template: `
     <section class="sec" id="contributors" aria-labelledby="contributors-h">
       <div class="sec-head">
-        <h2 id="contributors-h"><app-icon name="users" [size]="20" />Top contributors</h2>
+        <h2 id="contributors-h">Top contributors</h2>
         <p class="note">
           A thank-you to the people building these emulators. Ranked by commits on each project's main branch,
           GitHub's own contributor measure, with their merged pull requests alongside. AI coding agents aren't listed.

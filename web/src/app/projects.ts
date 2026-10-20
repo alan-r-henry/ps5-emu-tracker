@@ -50,6 +50,9 @@ export const PROJECTS: ProjectDef[] = [
 
 export const PS5_CATALOG_FALLBACK = 9215;
 
+/** GTA 6's PS5 release day (UTC), for the hero countdown. gta.json carries the same date. */
+export const GTA6_RELEASE = '2026-11-19';
+
 export const SOURCES = {
   anyps5Progress: 'https://boykopovar.github.io/AnyPS5/progress.json',
   anyps5Roadmap: 'https://alxcbtw.github.io/anyps5-roadmap/roadmap.json',

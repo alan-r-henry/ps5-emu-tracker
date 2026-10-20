@@ -1,27 +1,62 @@
-<div class="page">
-  <header class="masthead" id="top">
-    <div class="masthead-top">
-      <div class="masthead-text">
-        <p class="eyebrow">PS5 emulation on PC · daily progress</p>
-        <h1>PS5 Emulation Tracker</h1>
-        @if (gamePageCount(); as n) { <a class="masthead-games with-icon" href="games/"><app-icon name="grid" [size]="15" />Browse all {{ fmt(n) }} games that run on PC</a> }
-      </div>
-      <app-fund />
-    </div>
-    <div class="livebar" role="status">
-      <span class="pulse" [class.on]="!!svc.liveAt()" [class.busy]="svc.loading()" aria-hidden="true"></span>
-      <span>{{ liveStatus() }}</span>
-      @if (savedThrough(); as d) {
-        <span class="muted with-icon"><app-icon name="history" [size]="14" />History saved through {{ longDate(d) }}</span>
-      }
-      <button type="button" class="btn with-icon" (click)="refresh()" [disabled]="svc.loading()">
-        <app-icon name="refresh" [size]="14" [class.spin]="svc.loading()" />{{ svc.loading() ? 'Refreshing…' : 'Refresh now' }}
-      </button>
+<a class="skip" href="#projects">Skip to the figures</a>
+<header class="topbar">
+  <a class="brand" href="#top"><span class="reg" aria-hidden="true"></span>PS5 <span class="brand-mid">Emulation </span>Tracker</a>
+  <nav class="nav" aria-label="Sections">
+    <ul class="nav-list">
+      @for (l of navLinks; track l.href) { <li><a class="nav-link" [href]="l.href">{{ l.label }}</a></li> }
+      @if (hasGamePages()) { <li><a class="nav-link" href="games/">All games</a></li> }
+    </ul>
+    <button type="button" class="menu-btn" popovertarget="menu" aria-controls="menu">Menu</button>
+    <div class="menu-sheet" id="menu" popover #menu>
+      <ul>
+        @for (l of navLinks; track l.href) { <li><a [href]="l.href" (click)="menu.hidePopover()">{{ l.label }}</a></li> }
+        @if (hasGamePages()) { <li><a href="games/">All games</a></li> }
+      </ul>
       <div class="theme-switch" role="group" aria-label="Colour theme">
         @for (t of themes; track t.value) {
-          <button type="button" [attr.aria-pressed]="theme() === t.value" (click)="setTheme(t.value)" [attr.aria-label]="t.label + ' theme'" [title]="t.label"><app-icon [name]="t.icon" [size]="15" /></button>
+          <button type="button" [attr.aria-pressed]="theme() === t.value" (click)="setTheme(t.value)">{{ t.label }}</button>
         }
       </div>
+    </div>
+  </nav>
+  <div class="topbar-end">
+    <app-fund />
+    <div class="theme-switch" role="group" aria-label="Colour theme">
+      @for (t of themes; track t.value) {
+        <button type="button" [attr.aria-pressed]="theme() === t.value" (click)="setTheme(t.value)" [attr.aria-label]="t.label + ' theme'" [title]="t.label"><app-icon [name]="t.icon" [size]="15" /></button>
+      }
+    </div>
+  </div>
+</header>
+
+<div class="page" id="top">
+  <section class="hero" aria-labelledby="hero-h">
+    <span class="reg corner tl" aria-hidden="true"></span><span class="reg corner tr" aria-hidden="true"></span>
+    <span class="reg corner bl" aria-hidden="true"></span><span class="reg corner br" aria-hidden="true"></span>
+    <div class="hero-copy">
+      <h1 id="hero-h">PS5 Emulation Tracker</h1>
+      <p class="hero-lede">Three open-source projects are teaching PCs to run PS5 games. Here’s how far each one has got.</p>
+      <a class="cta" href="games/"><span>Browse the {{ gamePageCount() ? fmt(gamePageCount()) + ' ' : '' }}games that run on PC</span></a>
+    </div>
+    <ul class="meters" aria-label="Progress by emulator">
+      @for (m of progress(); track m.name) {
+        <li [style.--accent]="m.color"><a [href]="'#card-' + m.name">
+          <span class="meter-name">{{ m.name }}</span>
+          <span class="meter-value num">{{ m.value }}</span>
+          <meter min="0" max="1" [value]="m.share ?? 0" aria-hidden="true"></meter>
+          <span class="meter-measure">{{ m.measure }}</span>
+        </a></li>
+      }
+    </ul>
+    <div class="hero-foot">
+      <div class="livebar" role="status">
+        <span class="live-now"><span class="pulse" [class.on]="!!svc.liveAt()" [class.busy]="svc.loading()" aria-hidden="true"></span>{{ liveStatus() }}</span>
+        <span class="muted">History saved through {{ savedThrough() ? longDate(savedThrough()!) : '…' }}</span>
+        <button type="button" class="btn small" (click)="refresh()" [disabled]="svc.loading()">
+          <app-icon name="refresh" [size]="13" [class.spin]="svc.loading()" />{{ svc.loading() ? 'Refreshing' : 'Refresh' }}
+        </button>
+      </div>
+      @if (gtaDays(); as n) { <a class="hero-gta" href="#gta6">GTA 6 reaches PS5 in <b class="num">{{ n }}</b> {{ n === 1 ? 'day' : 'days' }}</a> } @else { <a class="hero-gta" href="#gta6">GTA 6 is out on PS5</a> }
     </div>
     @if (svc.problems().length || svc.historyError()) {
       <ul class="problems">
@@ -29,12 +64,12 @@
         @for (p of svc.problems(); track p) { <li><app-icon name="alert" [size]="15" />{{ p }}. Showing saved figures instead.</li> }
       </ul>
     }
-  </header>
+  </section>
 
   <main>
-    <section class="sec" id="projects" aria-labelledby="projects-h">
+    <section class="sec major" id="projects" aria-labelledby="projects-h">
       <div class="sec-head">
-        <h2 id="projects-h"><app-icon name="grid" [size]="20" />Projects</h2>
+        <h2 id="projects-h">Emulators</h2>
         <p class="note">Each project measures progress differently, so the main figure differs per card. Figures marked <span class="tag live">live</span> were fetched just now; the rest come from the last saved snapshot. "Today" is the current UTC day.</p>
       </div>
       <div class="grid">
@@ -79,7 +114,7 @@
 
     <section class="sec" id="road" aria-labelledby="road-h">
       <div class="sec-head">
-        <h2 id="road-h"><app-icon name="flag" [size]="20" />Road to 100%</h2>
+        <h2 id="road-h">Road to 100%</h2>
         <p class="note">Progress against the full PS5 catalog of {{ fmt(catalog()) }} titles, plus AnyPS5's own count of system functions and shader instructions. Projected finish dates assume the recent pace holds in a straight line; real progress comes in bursts, so treat them as a rough guess.</p>
       </div>
       <div class="grid">
@@ -119,7 +154,7 @@
 
     <section class="sec" id="activity" aria-labelledby="activity-h">
       <div class="sec-head">
-        <h2 id="activity-h"><app-icon name="merge" [size]="20" />Merged pull requests per day</h2>
+        <h2 id="activity-h">Merged pull requests per day</h2>
         <p class="note">Last 30 days; today's bar (dashed outline) is live. Each chart has its own scale: AnyPS5 merges many small automated PRs, so its counts run far higher.</p>
       </div>
       <div class="grid">
@@ -141,7 +176,7 @@
 
     <section class="sec" id="games" aria-labelledby="games-h">
       <div class="sec-head">
-        <h2 id="games-h"><app-icon name="gamepad" [size]="20" />Game compatibility</h2>
+        <h2 id="games-h">Game compatibility</h2>
       </div>
       <div class="grid two">
         <article class="card" id="toptier">
@@ -188,9 +223,9 @@
       </div>
     </section>
 
-    <section class="sec" id="playable" aria-labelledby="playable-h">
+    <section class="sec major" id="playable" aria-labelledby="playable-h">
       <div class="sec-head">
-        <h2 id="playable-h"><app-icon name="play" [size]="20" />Playable games</h2>
+        <h2 id="playable-h">Playable games</h2>
         <p class="note">Games at each project's top tier, most recently tested first. Popularity is the number of player ratings on the game's PlayStation Store page. FPS comes from what testers wrote in their reports, on their own hardware; many reports don't mention it. KytyPS5 has no "playable" tier, so its list is every game that reaches gameplay, including slow ones.</p>
       </div>
       <div class="tools">
@@ -260,10 +295,10 @@
 
     <section class="sec" id="others" aria-labelledby="others-h">
       <div class="sec-head">
-        <h2 id="others-h"><app-icon name="layers" [size]="20" />Other projects</h2>
+        <h2 id="others-h">Other projects</h2>
         <p class="note">Forks, ports and smaller emulators, for context. Commits counted over the last 30 days, from the last saved snapshot.</p>
       </div>
-      <div class="tablebox">
+      <div class="tablebox" tabindex="0" role="region" aria-label="Other projects table">
         <table>
           <thead>
             <tr><th>Repository</th><th>What it is</th><th class="n"><span class="with-icon"><app-icon name="star" [size]="13" />Stars</span></th><th class="n"><span class="with-icon"><app-icon name="commit" [size]="13" />Commits</span></th><th><span class="with-icon"><app-icon name="clock" [size]="13" />Last push</span></th></tr>
@@ -286,7 +321,7 @@
     </section>
 
     <section class="sec faq" id="faq" aria-labelledby="faq-h">
-      <h2 id="faq-h"><app-icon name="info" [size]="20" />Questions</h2>
+      <h2 id="faq-h">Questions</h2>
       <details open>
         <summary>Can I play GTA 6 on PC with a PS5 emulator?</summary>
         <p>Not yet. GTA 6 comes out on PS5 and Xbox Series X|S on November 19, 2026, and Rockstar hasn't announced a PC version. No PS5 emulator can run it until the game is out and people test it. The <a href="#gta6">GTA 6 readiness score</a> above tracks the milestones that have to fall first.</p>
@@ -314,7 +349,7 @@
     </section>
 
     <section class="sec method" id="method" aria-labelledby="method-h">
-      <h2 id="method-h"><app-icon name="info" [size]="20" />How this is measured</h2>
+      <h2 id="method-h">How this is measured</h2>
       <ul>
         <li>No emulator publishes an overall "% complete". The figures here are the closest each project offers: AnyPS5's progress report and community blocker map, and the KytyPS5 and SharpEmu community compatibility lists.</li>
         <li>AnyPS5's library percentage covers only the functions it has catalogued so far. The total grows as more are found, so the percentage can go down.</li>
@@ -327,14 +362,29 @@
     </section>
   </main>
 
-  <footer class="foot note">
-    Sources:
-    <a class="with-icon" href="https://github.com/boykopovar/AnyPS5" target="_blank" rel="noopener"><app-icon name="github" [size]="13" />AnyPS5</a> ·
-    <a class="with-icon" href="https://boykopovar.github.io/AnyPS5/" target="_blank" rel="noopener"><app-icon name="globe" [size]="13" />AnyPS5 progress</a> ·
-    <a class="with-icon" href="https://alxcbtw.github.io/anyps5-roadmap/" target="_blank" rel="noopener"><app-icon name="globe" [size]="13" />AnyPS5 blocker map</a> ·
-    <a class="with-icon" href="https://github.com/KytyPS5/KytyPS5" target="_blank" rel="noopener"><app-icon name="github" [size]="13" />KytyPS5</a> ·
-    <a class="with-icon" href="https://kytyps5.github.io/" target="_blank" rel="noopener"><app-icon name="globe" [size]="13" />KytyPS5 compatibility</a> ·
-    <a class="with-icon" href="https://github.com/sharpemu/sharpemu" target="_blank" rel="noopener"><app-icon name="github" [size]="13" />SharpEmu</a> ·
-    <a class="with-icon" href="https://sharpemu.app" target="_blank" rel="noopener"><app-icon name="globe" [size]="13" />SharpEmu compatibility</a>
+  <footer class="finale">
+    <div class="finale-cols">
+      <div>
+        <h2 class="finale-h">Sources</h2>
+        <ul class="finale-links">
+          <li><a href="https://github.com/boykopovar/AnyPS5" target="_blank" rel="noopener">AnyPS5 on GitHub</a></li>
+          <li><a href="https://boykopovar.github.io/AnyPS5/" target="_blank" rel="noopener">AnyPS5 progress report</a></li>
+          <li><a href="https://alxcbtw.github.io/anyps5-roadmap/" target="_blank" rel="noopener">AnyPS5 blocker map</a></li>
+          <li><a href="https://github.com/KytyPS5/KytyPS5" target="_blank" rel="noopener">KytyPS5 on GitHub</a></li>
+          <li><a href="https://kytyps5.github.io/" target="_blank" rel="noopener">KytyPS5 compatibility list</a></li>
+          <li><a href="https://github.com/sharpemu/sharpemu" target="_blank" rel="noopener">SharpEmu on GitHub</a></li>
+          <li><a href="https://sharpemu.app" target="_blank" rel="noopener">SharpEmu compatibility list</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="finale-h">This site</h2>
+        <ul class="finale-links">
+          @if (hasGamePages()) { <li><a href="games/">Every game, A to Z</a></li> }
+          <li><a href="#method">How this is measured</a></li>
+          <li><a href="#top">Back to the top</a></li>
+        </ul>
+        <p class="note">Set in Archivo. Not affiliated with Sony, Rockstar or the emulator projects.</p>
+      </div>
+    </div>
   </footer>
 </div>

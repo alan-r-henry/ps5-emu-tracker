@@ -66,9 +66,9 @@ function best(game: GtaGame | undefined): { rank: number; fps: number } {
   imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="sec" id="gta6" aria-labelledby="gta6-h">
+    <section class="sec major" id="gta6" aria-labelledby="gta6-h">
       <div class="sec-head">
-        <h2 id="gta6-h"><app-icon name="gamepad" [size]="20" />GTA 6 on PS5 emulators</h2>
+        <h2 id="gta6-h">GTA 6 on PS5 emulators</h2>
         <p class="note">How close PS5 emulation is to running Grand Theft Auto VI on PC. The score adds up checkable milestones, so it only reaches 100% once GTA 6 is playable at 30+ FPS on an emulator.</p>
       </div>
       @if (data(); as d) {

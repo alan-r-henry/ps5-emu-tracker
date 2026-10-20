@@ -85,6 +85,48 @@ def gta_readiness(gta, lib_share, today):
     return round(score)
 
 
+GTA6_RELEASE = "2026-11-19"  # same as web/src/app/projects.ts
+NAV = [("#projects", "Emulators"), ("#gta6", "GTA 6"), ("#playable", "Games"), ("#contributors", "People"), ("#faq", "FAQ")]
+
+
+def hero_progress(snaps):
+    """Each emulator's progress on its main measure, as the app's hero computes it (app.ts progress())."""
+    def tested_share(s):
+        top, tested = s.get("games_top"), s.get("games_tested")
+        return top / tested if isinstance(top, (int, float)) and tested else None
+    lib = snaps.get("AnyPS5", {}).get("lib_percent")
+    return [("AnyPS5", 1, lib / 100 if isinstance(lib, (int, float)) else None, "of system functions implemented"),
+            ("KytyPS5", 2, tested_share(snaps.get("KytyPS5", {})), "of tested games reach in-game"),
+            ("SharpEmu", 3, tested_share(snaps.get("SharpEmu", {})), "of tested games reach playable")]
+
+
+def static_hero(snaps, games, today):
+    """The app's top bar and hero as plain HTML, so the hero paints with the first frame. The app replaces it
+    with the same markup when it starts; keep it in step with web/src/app/app.html. The CSP forbids inline
+    styles, so each meter's colour comes from a class (.series-N in styles.css)."""
+    pages = len(game_groups(games))
+    days = (dt.date.fromisoformat(GTA6_RELEASE) - dt.date.fromisoformat(today)).days
+    corners = "".join(f'<span class="reg corner {c}" aria-hidden="true"></span>' for c in ("tl", "tr", "bl", "br"))
+    meters = "".join(
+        f'<li class="series-{n}"><a href="#card-{name}"><span class="meter-name">{name}</span>'
+        f'<span class="meter-value num">{"…" if share is None else f"{share * 100:.0f}%"}</span>'
+        f'<meter min="0" max="1" value="{0 if share is None else round(min(max(share, 0), 1), 4)}" aria-hidden="true"></meter>'
+        f'<span class="meter-measure">{measure}</span></a></li>' for name, n, share, measure in hero_progress(snaps))
+    nav = "".join(f'<li><a class="nav-link" href="{h}">{label}</a></li>' for h, label in NAV)
+    gta = (f'<a class="hero-gta" href="#gta6">GTA 6 reaches PS5 in <b class="num">{days}</b> {"day" if days == 1 else "days"}</a>'
+           if days > 0 else '<a class="hero-gta" href="#gta6">GTA 6 is out on PS5</a>')
+    return f"""<header class="topbar"><a class="brand" href="#top"><span class="reg" aria-hidden="true"></span>PS5 <span class="brand-mid">Emulation </span>Tracker</a>
+<nav class="nav" aria-label="Sections"><ul class="nav-list">{nav}<li><a class="nav-link" href="games/">All games</a></li></ul></nav></header>
+<div class="page" id="top">
+<section class="hero" aria-labelledby="hero-h">{corners}
+<div class="hero-copy"><h1 id="hero-h">PS5 Emulation Tracker</h1>
+<p class="hero-lede">Three open-source projects are teaching PCs to run PS5 games. Here’s how far each one has got.</p>
+<a class="cta" href="games/"><span>Browse the {pages} games that run on PC</span></a></div>
+<ul class="meters" aria-label="Progress by emulator">{meters}</ul>
+<div class="hero-foot"><div class="livebar" role="status"><span class="live-now"><span class="pulse" aria-hidden="true"></span>Loading live figures…</span><span class="muted">History saved through {e(long_date(max((s.get("date", "") for s in snaps.values()), default=today)))}</span></div>{gta}</div>
+</section>"""
+
+
 def build(data, today):
     all_snaps = load(data, "snapshots", [])
     snaps = latest_snapshots(all_snaps)
@@ -122,7 +164,7 @@ def build(data, today):
         if lib is not None else None
     )
 
-    out = ['<main class="seo-summary">', "<h1>PS5 Emulation Tracker</h1>",
+    out = [static_hero(snaps, games, today), '<main class="seo-summary">',
            f"<p>Daily progress of PS5 emulation on PC, updated {e(long_date(today))}: the AnyPS5, KytyPS5 and "
            "SharpEmu emulators, every PS5 game that reaches gameplay with its frame rate, and a GTA 6 emulation "
            "readiness score built from checkable milestones.</p>",
@@ -171,7 +213,7 @@ def build(data, today):
     out.append("<h2>Questions</h2>")
     for q, a in faq:
         out.append(f"<h3>{e(q)}</h3><p>{e(a)}</p>")
-    out += ["<p>Turn on JavaScript to see the live figures, charts and game list.</p>", "</main>"]
+    out += ["<p>Turn on JavaScript to see the live figures, charts and game list.</p>", "</main>", "</div>"]
 
     graph = [
         {"@type": "WebSite", "@id": SITE + "#website", "name": "PS5 Emulation Tracker", "url": SITE,
@@ -219,6 +261,8 @@ SAFE_COVER = re.compile(r"https://image\.api\.playstation\.com/[\w./%-]+\Z")
 PAGE_CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; "
             "img-src 'self' https://image.api.playstation.com; base-uri 'none'; form-action 'none'")
 BASE = urlsplit(SITE).path  # "/ps5-emu-tracker/"
+INK = {"AnyPS5": "c", "KytyPS5": "m", "SharpEmu": "y"}  # each emulator's colour class (.ink-c etc. in styles.css)
+FONT_PRELOAD = ""  # set by main() once the built font file is known
 
 
 def clean_title(title):
@@ -288,7 +332,7 @@ def page_graph(kind, url, name, description, modified, crumbs, extra=None):
     ])
 
 
-def page_shell(title, description, url, ld, body, style_link, image=None):
+def page_shell(title, description, url, ld, body, style_link, image=None, robots="index, follow, max-image-preview:large, max-snippet:-1"):
     image_tags = (f'  <meta property="og:image" content="{e(image)}">\n'
                   '  <meta name="twitter:card" content="summary_large_image">\n'
                   if image else '  <meta name="twitter:card" content="summary">\n')
@@ -300,9 +344,9 @@ def page_shell(title, description, url, ld, body, style_link, image=None):
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{e(title)}</title>
   <meta name="description" content="{e(description)}">
-  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
+  <meta name="robots" content="{robots}">
   <meta name="theme-color" content="#0f141c">
-  <link rel="canonical" href="{e(url)}">
+{f'  <link rel="canonical" href="{e(url)}">' + chr(10) if url else ''}{FONT_PRELOAD}
   <link rel="icon" href="{BASE}favicon.ico" sizes="48x48">
   <link rel="icon" href="{BASE}icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="{BASE}apple-touch-icon.png">
@@ -311,21 +355,19 @@ def page_shell(title, description, url, ld, body, style_link, image=None):
   <meta property="og:locale" content="en_US">
   <meta property="og:title" content="{e(title)}">
   <meta property="og:description" content="{e(description)}">
-  <meta property="og:url" content="{e(url)}">
-{image_tags}  <script src="{BASE}theme.js"></script>
+{f'  <meta property="og:url" content="{e(url)}">' + chr(10) if url else ''}{image_tags}  <script src="{BASE}theme.js"></script>
   {style_link}
   <link rel="stylesheet" href="{BASE}game.css">
-  <script type="application/ld+json">{ld}</script>
-</head>
+{f'  <script type="application/ld+json">{ld}</script>' + chr(10) if ld else ''}</head>
 <body class="gp">
-  <header class="gp-top"><a class="gp-brand" href="{BASE}">PS5 Emulation Tracker</a><a href="{BASE}games/">All games</a></header>
+  <header class="gp-top"><a class="gp-brand" href="{BASE}"><span class="reg" aria-hidden="true"></span>PS5 Emulation Tracker</a><a class="gp-nav" href="{BASE}games/">All games</a></header>
   <main class="gp-main">
 {body}
   </main>
   <footer class="gp-foot">
     <p>Statuses come from each project's public compatibility list and are checked every 3 hours. Frame rates are what
     testers reported on their own hardware. Not affiliated with Sony, Rockstar or the emulator projects.</p>
-    <p><a href="{BASE}">PS5 Emulation Tracker</a> · <a href="{BASE}games/">All games</a> · <a href="{BASE}#method">How this is measured</a></p>
+    <ul class="gp-foot-links"><li><a href="{BASE}">PS5 Emulation Tracker</a></li><li><a href="{BASE}games/">All games</a></li><li><a href="{BASE}#method">How this is measured</a></li></ul>
   </footer>
 </body>
 </html>
@@ -336,7 +378,7 @@ def emulator_card(project, row):
     repo, compat = PROJECT_LINKS[project]
     tier = TOP_TIER[project]
     if not row:
-        return (f'<section class="gp-emu gp-none"><h2>{project}</h2><p class="gp-status">No {tier} report yet</p>'
+        return (f'<section class="gp-emu gp-none ink-{INK[project]}"><h2>{project}</h2><p class="gp-status">No {tier} report yet</p>'
                 f'<p>It may still boot or reach the menus; see <a href="{compat}">{project}\'s compatibility list</a>.</p>'
                 "</section>")
     facts = [("Frame rate", f"{row['fps']} FPS" if row.get("fps") else "Not reported"),
@@ -346,7 +388,7 @@ def emulator_card(project, row):
     quote = f'<blockquote>“{e(row["fps_note"])}”</blockquote>' if row.get("fps_note") else ""
     report = (f'<p><a href="{e(row["url"])}">Read the {project} test report</a></p>'
               if SAFE_REPORT.match(row.get("url") or "") else "")
-    return (f'<section class="gp-emu gp-ok"><h2>{project}</h2><p class="gp-status">{tier.capitalize()}</p>'
+    return (f'<section class="gp-emu gp-ok ink-{INK[project]}"><h2>{project}</h2><p class="gp-status">{tier.capitalize()}</p>'
             f"<dl>{dl}</dl>{quote}{report}</section>")
 
 
@@ -387,10 +429,9 @@ def game_page(grp, related, today, style_link):
     rel = "".join(f'<li><a href="{BASE}games/{o["slug"]}/">{e(o["title"])}</a></li>' for o in related)
     repos = {p: PROJECT_LINKS[p][0] for p in ORDER}
     body = f"""    <nav class="gp-crumbs" aria-label="Breadcrumb"><a href="{BASE}">Tracker</a> › <a href="{BASE}games/">Games</a> › <span>{e(title)}</span></nav>
-    <div class="gp-hero">
+    <div class="gp-hero ink-{INK[have[0]]}">
       {cover}
       <div>
-        <p class="eyebrow">PS5 game on PC emulators</p>
         <h1>{e(title)} on PS5 emulators</h1>
         <p class="gp-lead">{e(lead)}</p>
         {f'<p class="gp-about">{e(" ".join(about))}</p>' if about else ''}
@@ -424,7 +465,8 @@ def games_index(groups, today, style_link):
         chips = "".join(
             f'<span class="gp-chip">{p}{" · " + e(g["rows"][p]["fps"]) + " FPS" if g["rows"][p].get("fps") else ""}</span>'
             for p in ORDER if p in g["rows"])
-        items.append(f'<li><a href="{BASE}games/{g["slug"]}/">{e(g["title"])}</a><span class="gp-chips">{chips}</span></li>')
+        ink = INK[next(p for p in ORDER if p in g["rows"])]
+        items.append(f'<li class="ink-{ink}"><a href="{BASE}games/{g["slug"]}/">{e(g["title"])}</a><span class="gp-chips">{chips}</span></li>')
     summary = (f"{len(games)} PS5 games reach gameplay on at least one PC emulator: {counts['SharpEmu']} are playable on "
                f"SharpEmu, {counts['KytyPS5']} get in-game on KytyPS5 and {counts['AnyPS5']} are playable on AnyPS5.")
     title = f"PS5 games that run on PC emulators ({len(games)} games)"
@@ -459,6 +501,19 @@ def write_game_pages(site, groups, today, style_link):
         (out / grp["slug"] / "index.html").write_text(
             game_page(grp, related_games(grp, groups), today, style_link), encoding="utf-8")
     (out / "index.html").write_text(games_index(groups, today, style_link), encoding="utf-8")
+
+
+def write_404(site, style_link):
+    """GitHub Pages serves this for any missing address, so every link is absolute."""
+    body = f"""    <div class="gp-404">
+      <div class="press-404" aria-hidden="true">404</div>
+      <h1>This page doesn’t boot</h1>
+      <p class="gp-lead">There’s nothing at this address. It may have moved, or the link may be mistyped.</p>
+      <p class="gp-404-links"><a class="gp-cta" href="{BASE}">Back to the tracker</a><a href="{BASE}games/">Every game, A to Z</a></p>
+    </div>"""
+    page = page_shell("Page not found | PS5 Emulation Tracker", "This page doesn't exist on the PS5 Emulation Tracker.",
+                      None, None, body, style_link, robots="noindex")
+    (site / "404.html").write_text(page, encoding="utf-8")
 
 
 def write_sitemap(site, groups, today):
@@ -511,8 +566,18 @@ def main():
     if not style:
         sys.exit("seo.py: couldn't find the stylesheet link in index.html")
     style_link = style.group(0).replace(f'href="{style.group(1)}"', f'href="{BASE}{style.group(1)}"')
+    # Preload the one font file so the hero's display type paints without a late swap.
+    global FONT_PRELOAD
+    font = next(iter(sorted((site / "media").glob("archivo-latin-wdth-normal-*.woff2"))), None)
+    if font:
+        tag = f'<link rel="preload" href="{BASE}media/{font.name}" as="font" type="font/woff2" crossorigin>'
+        FONT_PRELOAD = f"  {tag}" + chr(10)
+        if 'rel="preload"' not in page:
+            page = page.replace(style.group(0), tag + chr(10) + "  " + style.group(0), 1)
+            (site / "index.html").write_text(page, encoding="utf-8")
     groups = game_groups(load(site / "data", "playable_games", []))
     write_game_pages(site, groups, today, style_link)
+    write_404(site, style_link)
     add_page_links(site, groups)
     urls = write_sitemap(site, groups, today)
     print(f"seo.py: wrote {len(body):,} characters of summary and {len(groups)} game pages; "

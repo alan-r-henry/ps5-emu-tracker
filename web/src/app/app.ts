@@ -9,7 +9,7 @@ import { Forecast, Point, pace, project, when } from './forecast';
 import { Icon, IconName } from './icon';
 import { daysBefore, fmt, longDate, pct, signed, timeAgo, utcDay } from './format';
 import { PlayableGame, ProjectDef, ProjectName, Snapshot } from './models';
-import { PROJECTS, PS5_CATALOG_FALLBACK } from './projects';
+import { GTA6_RELEASE, PROJECTS, PS5_CATALOG_FALLBACK } from './projects';
 import { TrackerService } from './tracker.service';
 
 interface Stat {
@@ -34,6 +34,15 @@ interface StatGroup {
   title: string;
   icon: IconName;
   stats: Stat[];
+}
+
+/** One emulator's progress meter in the hero. */
+interface Progress {
+  name: ProjectName;
+  color: string;
+  share: number | null;
+  value: string;
+  measure: string;
 }
 
 interface RoadRow {
@@ -84,6 +93,14 @@ export class App {
     { value: 'dark', label: 'Dark', icon: 'moon' },
   ];
   protected readonly theme = signal<Theme>(readTheme());
+
+  protected readonly navLinks = [
+    { href: '#projects', label: 'Emulators' },
+    { href: '#gta6', label: 'GTA 6' },
+    { href: '#playable', label: 'Games' },
+    { href: '#contributors', label: 'People' },
+    { href: '#faq', label: 'FAQ' },
+  ];
 
   constructor() {
     countVisit();
@@ -142,6 +159,34 @@ export class App {
     const ghText = gh ? ` · GitHub figures ${timeAgo(gh, this.now())}` : '';
     return `Live · updated ${timeAgo(at, this.now())}${ghText}`;
   });
+
+  /** Days until GTA 6 reaches PS5, or null once it's out. */
+  protected readonly gtaDays = computed(() => {
+    const days = Math.round((Date.parse(GTA6_RELEASE) - Date.parse(this.today())) / 86_400_000);
+    return days > 0 ? days : null;
+  });
+
+  /**
+   * The hero's progress meters. AnyPS5 is measured by system functions implemented; KytyPS5 and SharpEmu by
+   * the share of their tested games that reach their top tier, the closest each has to a progress figure.
+   */
+  protected readonly progress = computed<Progress[]>(() =>
+    PROJECTS.map((p) => {
+      let share: number | null;
+      let measure: string;
+      if (p.name === 'AnyPS5') {
+        share = this.anyLibShare();
+        measure = 'of system functions implemented';
+      } else {
+        const top = this.topCount(p);
+        const tested = this.testedCount(p);
+        share = top != null && tested ? top / tested : null;
+        measure = `of tested games reach ${p.ladder.find((s) => s.key === p.topKey)!.label.toLowerCase()}`;
+      }
+      if (share != null) share = Math.min(Math.max(share, 0), 1);
+      return { name: p.name, color: p.color, share, measure, value: share == null ? '…' : pct(share, 0) };
+    }),
+  );
 
   /** Main figure per project: live where its source answered, else the last saved snapshot. */
   private headline(p: ProjectDef): { value: number | null; kind: 'share' | 'count'; live: boolean } {
@@ -384,7 +429,7 @@ export class App {
 
   protected readonly gameSorts: { value: GameSort; label: string }[] = [
     { value: 'tested', label: 'Testing date (newest)' },
-    { value: 'title', label: 'Alphabetical (A–Z)' },
+    { value: 'title', label: 'Alphabetical, A to Z' },
     { value: 'popularity', label: 'Popularity (most ratings)' },
     { value: 'released', label: 'Release date (newest)' },
     { value: 'fps', label: 'Frame rate (highest)' },
