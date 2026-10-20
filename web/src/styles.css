@@ -294,7 +294,8 @@ h3 > .icon { color: var(--muted); }
   line-height: 0.9; letter-spacing: -0.045em; margin-top: 6px; color: var(--fg); font-variant-numeric: tabular-nums;
 }
 .big-label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muted); font-size: var(--t-s); }
-.delta { font-size: var(--t-s); color: var(--muted); }
+.delta { display: grid; gap: 2px; font-size: var(--t-s); color: var(--muted); }
+.delta .delta-note { color: var(--muted); font-size: var(--t-xs); max-width: 44ch; }
 .delta.up { color: var(--ok); }
 .delta.down { color: var(--bad); }
 .tag {

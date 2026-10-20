@@ -87,8 +87,9 @@
               {{ c.headlineLabel }}
               <span class="tag" [class.live]="c.live">{{ c.live ? 'live' : 'saved' }}</span>
             </div>
-            <div class="delta with-icon" [class.up]="c.deltaUp" [class.down]="c.deltaDown">
-              <app-icon [name]="c.deltaUp ? 'trendUp' : c.deltaDown ? 'trendDown' : c.delta ? 'minus' : 'clock'" [size]="14" />{{ c.delta ?? 'Weekly change appears after 7 days of history' }}
+            <div class="delta" [class.up]="c.deltaUp" [class.down]="c.deltaDown">
+              <span class="with-icon"><app-icon [name]="c.deltaUp ? 'trendUp' : c.deltaDown ? 'trendDown' : c.delta ? 'minus' : 'clock'" [size]="14" />{{ c.delta ?? 'Weekly change appears after 7 days of history' }}</span>
+              @if (c.deltaNote) { <span class="delta-note">{{ c.deltaNote }}</span> }
             </div>
             <div class="stat-groups">
               @for (g of c.groups; track g.title) {

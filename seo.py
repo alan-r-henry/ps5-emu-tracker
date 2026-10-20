@@ -95,7 +95,7 @@ def hero_progress(snaps):
         top, tested = s.get("games_top"), s.get("games_tested")
         return top / tested if isinstance(top, (int, float)) and tested else None
     lib = snaps.get("AnyPS5", {}).get("lib_percent")
-    return [("AnyPS5", 1, lib / 100 if isinstance(lib, (int, float)) else None, "of system functions implemented"),
+    return [("AnyPS5", 1, lib / 100 if isinstance(lib, (int, float)) else None, "of known system functions implemented"),
             ("KytyPS5", 2, tested_share(snaps.get("KytyPS5", {})), "of tested games reach in-game"),
             ("SharpEmu", 3, tested_share(snaps.get("SharpEmu", {})), "of tested games reach playable")]
 

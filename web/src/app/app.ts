@@ -24,6 +24,8 @@ interface CardVm {
   headlineLabel: string;
   live: boolean;
   delta: string | null;
+  /** A second line under the delta, where the headline figure alone would mislead. */
+  deltaNote: string | null;
   deltaUp: boolean;
   deltaDown: boolean;
   groups: StatGroup[];
@@ -176,7 +178,7 @@ export class App {
       let measure: string;
       if (p.name === 'AnyPS5') {
         share = this.anyLibShare();
-        measure = 'of system functions implemented';
+        measure = 'of known system functions implemented';
       } else {
         const top = this.topCount(p);
         const tested = this.testedCount(p);
@@ -255,27 +257,47 @@ export class App {
       const weekAgo = daysBefore(this.today(), 7);
 
       let delta: number | null = null;
+      let deltaText: string | null = null;
+      let deltaNote: string | null = null;
       if (head.value != null && h) {
         if (p.name === 'AnyPS5') {
           const before = h.snapshots
             .filter((s) => s.project === p.name && s.date <= weekAgo && s.lib_percent != null)
             .sort((a, b) => a.date.localeCompare(b.date))
             .at(-1);
-          if (before) delta = head.value - before.lib_percent! / 100;
+          // The share is implemented ÷ known functions, and AnyPS5 keeps finding more of them, so the share
+          // can fall in a week of real progress. Lead with functions implemented; explain the share below it.
+          const done = lv.libraries?.done ?? snap?.lib_done;
+          const total = lv.libraries?.total ?? snap?.lib_total;
+          if (before) {
+            const points = head.value - before.lib_percent! / 100;
+            const pts = signed(points, (v) => (v * 100).toFixed(1));
+            if (done != null && total != null && before.lib_done != null && before.lib_total != null) {
+              delta = done - before.lib_done;
+              const found = total - before.lib_total;
+              deltaText = `${signed(delta, fmt)} functions implemented in 7 days`;
+              deltaNote =
+                found > 0 && points < 0
+                  ? `The share is down ${pts.slice(1)} points only because AnyPS5 found ${fmt(found)} more functions it has to implement.`
+                  : found > 0
+                    ? `Share ${pts} points, while ${fmt(found)} more functions became known.`
+                    : `Share ${pts} points.`;
+            } else {
+              delta = points;
+              deltaText = `${pts} points in 7 days`;
+            }
+          }
         } else {
           const before = h.compat_history
             .filter((r) => r.project === p.name && r.top && r.date <= weekAgo)
             .sort((a, b) => a.date.localeCompare(b.date))
             .at(-1);
-          if (before) delta = head.value - before.games;
+          if (before) {
+            delta = head.value - before.games;
+            deltaText = `${signed(delta, fmt)} games in 7 days`;
+          }
         }
       }
-      const deltaText =
-        delta == null
-          ? null
-          : head.kind === 'share'
-            ? `${signed(delta, (v) => (v * 100).toFixed(2))} points in 7 days`
-            : `${signed(delta, fmt)} games in 7 days`;
 
       const todayRow = h?.daily_activity.find((r) => r.project === p.name && r.day === this.today());
       const ai = snap?.ai_commits_30d;
@@ -333,6 +355,7 @@ export class App {
               : 'games playable',
         live: head.live,
         delta: deltaText,
+        deltaNote,
         deltaUp: (delta ?? 0) > 0,
         deltaDown: (delta ?? 0) < 0,
         groups,
