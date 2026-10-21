@@ -103,6 +103,8 @@ jobs:
           for f in snapshots compat_history daily_activity recent_merges anyps5_libraries satellites playable_games gta top_contributors; do
             cp "state/out/$f.json" "code/web/public/data/$f.json"
           done
+          # Build input for the game pages only (seo.py reads it, then deletes it); older data branches lack it.
+          if [ -f state/out/game_details.json ]; then cp state/out/game_details.json code/web/public/data/; fi
 
       - name: Check the payment details
         env:

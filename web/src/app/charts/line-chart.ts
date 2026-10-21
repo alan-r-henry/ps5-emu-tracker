@@ -63,7 +63,7 @@ export class LineChart {
 
   protected readonly height = 280;
   protected readonly top = 12;
-  private readonly bottom = 24;
+  private readonly bottom = 28;
   protected readonly fmt = fmt;
   protected readonly width = signal(0);
   protected readonly hoverDate = signal<string | null>(null);
@@ -75,10 +75,10 @@ export class LineChart {
   protected readonly ticks = computed(() =>
     niceTicks(Math.max(1, ...this.series().flatMap((s) => s.points.map((p) => p.value))), 4),
   );
-  protected readonly left = computed(() => fmt(this.ticks().at(-1) ?? 0).length * 7 + 14);
+  protected readonly left = computed(() => fmt(this.ticks().at(-1) ?? 0).length * 9 + 16);
   protected readonly right = computed(() => {
     const longest = Math.max(0, ...this.series().map((s) => fmt(s.points.at(-1)?.value).length));
-    return longest * 7.5 + 14;
+    return longest * 10 + 16;
   });
   private readonly t0 = computed(() => Date.parse(this.dates()[0] ?? '1970-01-01'));
   private readonly t1 = computed(() => Date.parse(this.dates().at(-1) ?? '1970-01-02'));
@@ -86,7 +86,7 @@ export class LineChart {
   protected readonly xLabels = computed(() => {
     const d = this.dates();
     if (!d.length) return [];
-    const n = Math.max(2, Math.min(6, Math.floor((this.width() - this.left() - this.right()) / 90)));
+    const n = Math.max(2, Math.min(6, Math.floor((this.width() - this.left() - this.right()) / 120)));
     const picks: string[] = [];
     for (let k = 0; k < n; k++) {
       const target = this.t0() + ((this.t1() - this.t0()) * k) / (n - 1);
@@ -106,7 +106,7 @@ export class LineChart {
         return { name: s.name, color: s.color, text: fmt(last.value), x: this.x(last.date), y: this.y(last.value) };
       })
       .sort((a, b) => a.y - b.y);
-    for (let i = 1; i < items.length; i++) if (items[i].y - items[i - 1].y < 14) items[i].y = items[i - 1].y + 14;
+    for (let i = 1; i < items.length; i++) if (items[i].y - items[i - 1].y < 20) items[i].y = items[i - 1].y + 20;
     return items;
   });
 

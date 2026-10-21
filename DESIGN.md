@@ -48,6 +48,25 @@ hairlines, registration marks) and one colour per emulator. What changed:
   accent, nav links draw an underline, game tiles ink their border. Floating UI uses a soft shadow.
 - **Footer:** the "PS5 in register" finale is gone; the footer is just the sources and site links.
 
+A later polish pass (Emil Kowalski's design-engineering rules, Impeccable's polish and craft floor,
+Taste's list of generated-page tells) removed the remaining print ornament: the crosshair marks on the hero
+corners and section headings, and the tiny uppercase labels, now sentence case. Pressable controls scale to
+0.97 on press; UI transitions stay at 200 ms or less and animate transform, opacity or colour only; hovers
+apply only with a fine pointer; the live dot pulses only while a refresh runs; the menu and fund dialog fade
+in with `@starting-style`.
+
+Type then dropped to two sizes: `--t-body` (1rem) for all text, and `--t-bold` (1.5rem) for bold headings
+and headline figures (page and section titles, card names, percentages, counts). Weight, not size, separates
+a page title from a section title; labels, buttons and table text stay at body size. The games index
+shows each game's cover thumbnail (initials when a game has no cover art), its ratings, release year and test
+date, and offers the tracker's sort options through `games.js`; without JavaScript it stays A to Z.
+
+Each game page lists that game's status on every emulator (from `game_details.json`, which the collector writes
+and `seo.py` reads at build time and then deletes), its recent test reports, and its engine and genre. `gta-6/`
+answers "can you play GTA 6 on PC" from the day's data. Its readiness score includes a "Can be copied from a PS5"
+milestone, kept by hand in `data/gta_status.json` because no compatibility list tracks it; every claim there is
+sourced and marked as reported where Rockstar or Sony haven't confirmed it.
+
 The sections below are the original plan; where they mention plates sliding into register, this revision
 replaces them.
 

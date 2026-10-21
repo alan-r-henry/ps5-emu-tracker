@@ -534,7 +534,9 @@ export class App {
   }
 
   protected initials(title: string): string {
-    return title.replace(/[^\p{L}\p{N} ]/gu, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+    const words = title.replace(/[^\p{L}\p{N} ]/gu, '').split(/\s+/).filter(Boolean);
+    const main = words.filter((w) => !/^(a|an|and|of|the|to|in|on|for)$/i.test(w));
+    return (main.length ? main : words).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
   }
 
   protected readonly satellites = computed(() =>

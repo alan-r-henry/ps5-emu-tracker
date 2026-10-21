@@ -15,6 +15,7 @@ import sys
 import urllib.request
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 from pathlib import Path
 
 PROJECTS = {
@@ -110,6 +111,12 @@ def search_count(q):
 def fetch_json(url):
     with urllib.request.urlopen(url, timeout=60) as r:
         return json.load(r)
+
+
+@lru_cache(maxsize=None)
+def kyty_detail(key):
+    """One KytyPS5 game's test reports; fetched once per run and shared by the games list and the game details."""
+    return fetch_json(f"https://kytyps5.github.io/data/compat/{key}.json")
 
 
 def git(cwd, *args):
@@ -340,8 +347,7 @@ def playable_games(cache):
         if g.get("overall") != "in-game":
             continue
         try:
-            detail = fetch_json(f"https://kytyps5.github.io/data/compat/{g['key']}.json")
-            reports = sorted(detail.get("reports", []), key=lambda r: r.get("testedDate") or "", reverse=True)
+            reports = sorted(kyty_detail(g["key"]).get("reports", []), key=lambda r: r.get("testedDate") or "", reverse=True)
         except Exception:  # one missing detail file shouldn't drop the game
             reports = []
         ingame = [r for r in reports if r.get("status") == "in-game"] or reports
@@ -372,6 +378,122 @@ def playable_games(cache):
         row["cover"] = row["cover"] if SAFE_IMAGE.match(row["cover"] or "") else None
         row["url"] = row["url"] if SAFE_LINK.match(row["url"] or "") else None
     return sorted(rows, key=lambda r: (r["project"], r["tested"] or "", r["title"].lower()), reverse=True)
+
+
+HISTORY_PER_GAME = 8
+TITLE_ID = re.compile(r"^[A-Z]{4}\d{5}$")
+
+
+def short(text, limit=90):
+    text = re.sub(r"\s+", " ", (text or "").replace("\\n", " ")).strip()
+    return text if len(text) <= limit else text[:limit - 1].rstrip(" ,;/") + "…"
+
+
+def report(date, status, os_name, hardware, notes="", url=None):
+    """One test report, trimmed for the game pages: CPU and GPU only, and no hardware field that just repeats the
+    title ID. Only AnyPS5 reports carry their own link; the other projects have one page per game."""
+    hw = None if TITLE_ID.match((hardware or "").strip()) else short(" / ".join(re.split(r"\s+/\s+(?![^()]*\))", hardware or "")[:2])) or None
+    r = {"date": (date or "")[:10] or None, "status": status, "os": short(os_name, 30) or None, "hardware": hw,
+         "fps": best_fps(notes)["fps"]}
+    if SAFE_LINK.match(url or ""):
+        r["url"] = url
+    return {k: v for k, v in r.items() if v is not None}
+
+
+def front_matter(text):
+    return dict(re.findall(r'^(\w+):\s*"?(.*?)"?\s*$', text.split("---")[1], re.M)) if text.startswith("---") else {}
+
+
+def game_details(cache):
+    """For every game each project has tested: its current status, its recent test reports (newest first)
+    and, from AnyPS5's blocker map, its engine and genres. The game pages use this to say how a game does on
+    every emulator, not just the ones where it reaches the top tier."""
+    status = {name: {} for name in PROJECTS}
+    history = {name: {} for name in PROJECTS}
+    alias = {}  # other title IDs of a KytyPS5 game -> the ID its entry is filed under
+    about = {}
+
+    index = fetch_json("https://kytyps5.github.io/data/compat-index.json")
+    for g in (index.get("games", []) if isinstance(index, dict) else index):
+        if not isinstance(g, dict) or not g.get("overall"):
+            continue
+        tid = g.get("titleId") or g["key"]
+        for other in g.get("allTitleIds") or []:
+            if other != tid:
+                alias[other] = tid
+        status["KytyPS5"][tid] = {"title": g.get("title"), "status": g["overall"], "tested": g.get("latestTested"),
+                                  "reports": sum((g.get("reportCounts") or {}).values()) or None,
+                                  "url": f"https://kytyps5.github.io/game/{g['key']}"}
+        reports = []
+        if g["overall"] == "in-game":  # the detail files are fetched for these games anyway
+            try:
+                reports = [report(r.get("testedDate"), r.get("status"), r.get("os"), r.get("hardware"), r.get("notes"))
+                           for r in kyty_detail(g["key"]).get("reports", [])]
+            except Exception:
+                pass
+        if reports:
+            history["KytyPS5"][tid] = sorted(reports, key=lambda r: r.get("date") or "", reverse=True)[:HISTORY_PER_GAME]
+
+    # SharpEmu keeps one file per game and overwrites it with each new report, so its git history is the timeline.
+    site = cache / "sharpemu__sharpemu-site"
+    folder = "src/content/compat/"
+    revs = {}
+    for block in git(site, "log", "--format=@%H", "--name-only", "--", folder).split("@")[1:]:
+        sha, *files = block.split()
+        for f in files:
+            revs.setdefault(f, []).append(sha)
+    for f in sorted((site / folder).glob("*.md")):
+        path = folder + f.name
+        front = front_matter(f.read_text(encoding="utf-8"))
+        tid = front.get("titleId", f.stem)
+        if not front.get("status"):
+            continue
+        seen, reports = set(), []
+        for sha in revs.get(path, [])[:HISTORY_PER_GAME * 2]:
+            try:
+                text = git(site, "show", f"{sha}:{path}")
+            except subprocess.CalledProcessError:
+                continue
+            fm = front_matter(text)
+            key = (fm.get("status"), fm.get("testedDate"), fm.get("hardware"))
+            if not fm.get("status") or key in seen:
+                continue
+            seen.add(key)
+            reports.append(report(fm.get("testedDate"), fm["status"], fm.get("os"), fm.get("hardware"),
+                                  text.split("---", 2)[2] if text.count("---") >= 2 else ""))
+        status["SharpEmu"][tid] = {"status": front["status"], "tested": front.get("testedDate"),
+                                   "reports": len(reports) or None, "url": f"https://sharpemu.app/game/{tid}"}
+        if reports:
+            history["SharpEmu"][tid] = sorted(reports, key=lambda r: r.get("date") or "", reverse=True)[:HISTORY_PER_GAME]
+
+    roadmap = fetch_json(ANYPS5_ROADMAP)
+    rank = {st["name"]: st.get("rank", i) for i, st in enumerate(roadmap.get("stages", [])) if st.get("name")}
+    for t in roadmap.get("titles", []):
+        tid = t.get("id")
+        if not tid or tid == "PPSA00000":
+            continue
+        facts = {k: v for k, v in (("engine", t.get("engine")), ("genres", [x for x in t.get("tags") or [] if x])) if v}
+        if facts:
+            about[tid] = facts
+        bs = t.get("best_stage") or {}
+        if not bs.get("stage"):
+            continue
+        # Claims above the stage the map's maintainers confirmed are left out, so the history never shows a
+        # game further along than its verified status.
+        best = rank.get(bs["stage"], -1)
+        evidence = [report(ev.get("date"), ev.get("stage"), ev.get("os"), ev.get("gpu"),
+                           " ".join(filter(None, [ev.get("note"), ev.get("quote")])), ev.get("url"))
+                    for ev in t.get("evidence") or [] if ev.get("stage") and rank.get(ev["stage"], 99) <= best]
+        status["AnyPS5"][tid] = {"title": t.get("name"), "status": bs["stage"], "tested": (bs.get("date") or "")[:10] or None,
+                                 "reports": len(evidence) or None,
+                                 "fixed_blockers": len(t.get("resolved_blockers") or []) or None,
+                                 "open_blockers": len(t.get("open_blockers") or []) or None}
+        if evidence:
+            history["AnyPS5"][tid] = sorted(evidence, key=lambda r: r.get("date") or "", reverse=True)[:HISTORY_PER_GAME]
+    meanings = {st["name"]: st.get("meaning") for st in roadmap.get("stages", []) if st.get("name")}
+    for name in status:
+        status[name] = {tid: {k: v for k, v in st.items() if v is not None} for tid, st in status[name].items()}
+    return {"status": status, "history": history, "kyty_alias": alias, "about": about, "anyps5_stages": meanings}
 
 
 def gta_progress(cache):
@@ -477,6 +599,7 @@ def main():
         for repo in ("sharpemu/sharpemu-site", "KytyPS5/kytyps5.github.io"):
             sync_clone(cache, repo)
         save(out / "playable_games.json", playable_games(cache))
+        save(out / "game_details.json", game_details(cache))
         save(out / "gta.json", gta_progress(cache))
         publish_to_web(work, out)
         return
@@ -590,6 +713,7 @@ def main():
     save(out / "satellites.json", sats)
     save(out / "top_contributors.json", {"date": today, "projects": top_people})
     save(out / "playable_games.json", playable_games(cache))
+    save(out / "game_details.json", game_details(cache))
     save(out / "gta.json", gta_progress(cache))
     publish_to_web(work, out)
     print(json.dumps({"date": today, "snapshots": snaps}, indent=1))

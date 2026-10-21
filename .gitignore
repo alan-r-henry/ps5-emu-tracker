@@ -4,6 +4,7 @@ out/
 history/
 web/public/data/*
 !web/public/data/fund.json
+!web/public/data/gta_status.json
 
 # For the claude.ai tracker page, not this site
 docs/

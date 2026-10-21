@@ -34,11 +34,20 @@ interface GtaData {
   gtav: GtaGame;
 }
 
+/** data/gta_status.json: edited by hand when news breaks, since no compatibility list tracks it. */
+interface GtaStatus {
+  updated: string;
+  copyable: boolean;
+  copy_blocker: string;
+}
+
 interface Milestone {
   label: string;
   weight: number;
   /** 0 to 1: most milestones are met or not; system-function coverage counts partially. */
   progress: number;
+  /** Why an unmet milestone is stuck, when that isn't obvious from its label. */
+  note?: string;
 }
 
 interface MilestoneGroup {
@@ -58,7 +67,8 @@ function best(game: GtaGame | undefined): { rank: number; fps: number } {
 
 /**
  * GTA 6 readiness: weighted milestones that can each be checked against the compatibility lists.
- * GTA 6 itself carries 60 points and reaching 100% needs it playable at 30+ FPS. GTA V's PS5 release
+ * GTA 6 itself carries 60 points and reaching 100% needs it playable at 30+ FPS. Before any emulator can
+ * test it, someone has to be able to copy it off a PS5 (data/gta_status.json, kept by hand). GTA V's PS5 release
  * (same RAGE engine) carries 25, and AnyPS5's share of known PS5 system functions carries 15.
  */
 @Component({
@@ -82,7 +92,7 @@ function best(game: GtaGame | undefined): { rank: number; fps: number } {
             <p class="gta-release with-icon">
               <app-icon name="calendar" [size]="15" />
               @if (daysToRelease(); as n) {
-                GTA 6 comes out on PS5 in {{ n }} {{ n === 1 ? 'day' : 'days' }} ({{ longDate(d.gta6.released!) }}). No emulator can test it before then.
+                GTA 6 comes out on PS5 in {{ n }} {{ n === 1 ? 'day' : 'days' }} ({{ longDate(d.gta6.released!) }}). No emulator can test it before then, and not until someone can copy it off a PS5.
               } @else if (d.gta6.released) {
                 GTA 6 came out on PS5 on {{ longDate(d.gta6.released) }}.
               } @else {
@@ -122,11 +132,13 @@ function best(game: GtaGame | undefined): { rank: number; fps: number } {
                       <app-icon [name]="m.progress >= 1 ? 'check' : 'minus'" [size]="14" />
                       <span>{{ m.label }}</span>
                       <span class="note num">{{ points(m) }} / {{ m.weight }}</span>
+                      @if (m.note && m.progress < 1) { <span class="note gta-why">{{ m.note }}</span> }
                     </li>
                   }
                 </ul>
               </div>
             }
+            @if (hasPage()) { <p class="gta-more"><a href="gta-6/">Can you play GTA 6 on PC? The full answer</a></p> }
           </article>
         </div>
       } @else {
@@ -138,10 +150,13 @@ function best(game: GtaGame | undefined): { rank: number; fps: number } {
 export class GtaReadiness {
   /** AnyPS5's share of known PS5 system functions, 0 to 1. */
   readonly libraryShare = input<number | null>(null);
+  /** The static gta-6/ page exists only in the published build (seo.py writes it). */
+  readonly hasPage = input(false);
 
   protected readonly projects = PROJECTS;
   protected readonly longDate = longDate;
   protected readonly data = signal<GtaData | null>(null);
+  protected readonly status = signal<GtaStatus | null>(null);
 
   protected readonly milestones = computed<MilestoneGroup[]>(() => {
     const d = this.data();
@@ -150,11 +165,14 @@ export class GtaReadiness {
     const five = best(d.gtav);
     const released = !!d.gta6.released && d.gta6.released <= utcDay(new Date());
     const met = (ok: boolean) => (ok ? 1 : 0);
+    const st = this.status();
     return [
       {
         title: 'GTA 6 itself',
         items: [
-          { label: 'Out on PS5', weight: 10, progress: met(released) },
+          { label: 'Out on PS5', weight: 5, progress: met(released) },
+          // A boot report proves someone copied it, whatever the hand-kept file says.
+          { label: 'Can be copied from a PS5', weight: 5, progress: met(!!st?.copyable || six.rank >= 1), note: st?.copy_blocker },
           { label: 'Boots on a PS5 emulator', weight: 10, progress: met(six.rank >= 1) },
           { label: 'Reaches the menus', weight: 10, progress: met(six.rank >= 2) },
           { label: 'Gets in-game', weight: 10, progress: met(six.rank >= 3) },
@@ -200,6 +218,10 @@ export class GtaReadiness {
       .then((r) => (r.ok ? r.json() : null))
       .then((d: GtaData | null) => this.data.set(d?.gta6 && d?.gtav ? d : null))
       .catch(() => this.data.set(null));
+    void fetch('data/gta_status.json', { cache: 'no-cache' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s: GtaStatus | null) => this.status.set(typeof s?.copyable === 'boolean' ? s : null))
+      .catch(() => this.status.set(null));
   }
 
   protected label(stage: Stage): string {

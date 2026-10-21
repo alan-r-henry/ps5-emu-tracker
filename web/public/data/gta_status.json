@@ -1,0 +1,13 @@
+{
+  "_help": "Edited by hand when news breaks; the collector never touches it. 'copyable' turns true once there's a public way to copy (dump) GTA 6 off a PS5, which emulators need before anyone can test it. Keep every claim sourced, say 'reported' for anything Rockstar or Sony hasn't confirmed, and never link to exploits, payloads or jailbreak tools.",
+  "updated": "2026-10-21",
+  "copyable": false,
+  "copy_blocker": "GTA 6 reportedly needs PS5 firmware 14.10 or newer. Copying a PS5 game off the console takes a hypervisor exploit, and none is public for 14.10: the last known one works only up to firmware 13.60 and was reported to Sony.",
+  "firmware": "GTA 6's PlayStation Store listing reportedly requires firmware 14.10 or newer. That comes from a datamine; Rockstar and Sony haven't confirmed it.",
+  "pc_version": "Rockstar hasn't announced a PC version. GamesBeat reports one for early 2027, citing four industry sources.",
+  "sources": [
+    { "name": "Notebookcheck: GTA 6 requires firmware 14.10 (datamine)", "url": "https://www.notebookcheck.net/GTA-6-blocks-PS5-jailbreak-and-piracy-on-release-date-requiring-14-10-00-firmware.1414828.0.html" },
+    { "name": "TweakTown: GTA VI PC port reported for January to March 2027", "url": "https://www.tweaktown.com/news/114065/report-gta-vi-pc-port-coming-jan-mar-2027/index.html" },
+    { "name": "Undocumented Behavior: PS5 14.10, the hypervisor and GTA 6 (video)", "url": "https://www.youtube.com/watch?v=0xTcphTjMPU" }
+  ]
+}

@@ -1,6 +1,6 @@
 <a class="skip" href="#projects">Skip to the figures</a>
 <header class="topbar">
-  <a class="brand" href="#top"><span class="reg" aria-hidden="true"></span>PS5 <span class="brand-mid">Emulation </span>Tracker</a>
+  <a class="brand" href="#top"><span class="reg" aria-hidden="true"></span><span>PS5 <span class="brand-mid">Emulation </span>Tracker</span></a>
   <nav class="nav" aria-label="Sections">
     <ul class="nav-list">
       @for (l of navLinks; track l.href) { <li><a class="nav-link" [href]="l.href">{{ l.label }}</a></li> }
@@ -31,8 +31,6 @@
 
 <div class="page" id="top">
   <section class="hero" aria-labelledby="hero-h">
-    <span class="reg corner tl" aria-hidden="true"></span><span class="reg corner tr" aria-hidden="true"></span>
-    <span class="reg corner bl" aria-hidden="true"></span><span class="reg corner br" aria-hidden="true"></span>
     <div class="hero-copy">
       <h1 id="hero-h">PS5 Emulation Tracker</h1>
       <p class="hero-lede">Three open-source projects are teaching PCs to run PS5 games. Here’s how far each one has got.</p>
@@ -111,7 +109,7 @@
       </div>
     </section>
 
-    <app-gta [libraryShare]="anyLibShare()" />
+    <app-gta [libraryShare]="anyLibShare()" [hasPage]="hasGamePages()" />
 
     <section class="sec" id="road" aria-labelledby="road-h">
       <div class="sec-head">
@@ -237,7 +235,7 @@
           </select>
         </label>
         @if (gameQuery()) { <span class="note num">{{ fmt(gameMatches()) }} matching</span> }
-        @if (hasGamePages()) { <a class="all-games with-icon" href="games/"><app-icon name="grid" [size]="14" />Every game, A to Z</a> }
+        @if (hasGamePages()) { <a class="all-games with-icon" href="games/"><app-icon name="grid" [size]="14" />Every game</a> }
       </div>
       @if (svc.games() === null) {
         <div class="card"><div class="chart skeleton"></div></div>
@@ -325,7 +323,15 @@
       <h2 id="faq-h">Questions</h2>
       <details open>
         <summary>Can I play GTA 6 on PC with a PS5 emulator?</summary>
-        <p>Not yet. GTA 6 comes out on PS5 and Xbox Series X|S on November 19, 2026, and Rockstar hasn't announced a PC version. No PS5 emulator can run it until the game is out and people test it. The <a href="#gta6">GTA 6 readiness score</a> above tracks the milestones that have to fall first.</p>
+        <p>Not yet, and not at launch. GTA 6 comes out on PS5 and Xbox Series X|S on November 19, 2026. Before any emulator can try it, someone has to copy the game off a PS5, and that's blocked for now: GTA 6 reportedly needs firmware 14.10, and there's no public way to copy games off a PS5 on that firmware. Even then, no PS5 emulator runs a game this size yet. The <a href="#gta6">GTA 6 readiness score</a> above tracks each step@if (hasGamePages()) {, and <a href="gta-6/">GTA 6 on PC</a> has the full answer}.</p>
+      </details>
+      <details>
+        <summary>Does GTA 6 need PS5 firmware 14.10?</summary>
+        <p>Reportedly. A datamine of GTA 6's PlayStation Store listing says it needs firmware 14.10 or newer; Rockstar and Sony haven't confirmed it. Public PS5 jailbreaks only work up to firmware 13.60, so a jailbroken console would have to update, and lose its jailbreak, to play it.</p>
+      </details>
+      <details>
+        <summary>When is GTA 6 coming to PC?</summary>
+        <p>Rockstar hasn't announced a PC version. GamesBeat reported on October 13, 2026 that one is planned for early 2027, citing four industry sources. GTA V took about 18 months to reach PC.</p>
       </details>
       <details>
         <summary>Does GTA V run on PS5 emulators?</summary>
@@ -380,7 +386,7 @@
       <div>
         <h2 class="finale-h">This site</h2>
         <ul class="finale-links">
-          @if (hasGamePages()) { <li><a href="games/">Every game, A to Z</a></li> }
+          @if (hasGamePages()) { <li><a href="games/">Every game</a></li> }
           <li><a href="#method">How this is measured</a></li>
           <li><a href="#top">Back to the top</a></li>
         </ul>

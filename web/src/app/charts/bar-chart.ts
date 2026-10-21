@@ -52,14 +52,14 @@ export class BarChart {
 
   protected readonly height = 150;
   protected readonly top = 8;
-  protected readonly bottom = 22;
+  protected readonly bottom = 26;
   protected readonly fmt = fmt;
   protected readonly hover = signal<number | null>(null);
   protected readonly width = signal(0);
   private readonly box = viewChild.required<ElementRef<HTMLElement>>('box');
 
   protected readonly ticks = computed(() => niceTicks(Math.max(1, ...this.data().map((d) => d.value)), 3));
-  protected readonly left = computed(() => fmt(this.ticks().at(-1) ?? 0).length * 7 + 12);
+  protected readonly left = computed(() => fmt(this.ticks().at(-1) ?? 0).length * 9 + 14);
   private readonly band = computed(() => (this.width() - this.left()) / Math.max(1, this.data().length));
   protected readonly gap = computed(() => this.band() * 0.25);
   protected readonly bw = computed(() => Math.max(1, this.band() - this.gap()));
