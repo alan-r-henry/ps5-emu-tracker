@@ -494,11 +494,10 @@ td .tag.with-icon { display: inline-flex; margin-left: 6px; gap: 4px; }
 /* ---- Bike fund (button in the top bar, dialog) ----------------------------------------------------- */
 .fund-btn {
   display: inline-flex; align-items: center; gap: 8px; flex: none; cursor: pointer;
-  font: inherit; font-size: var(--t-body); font-weight: 600; padding: 6px 12px 6px 10px; border-radius: var(--radius);
+  font: inherit; font-size: var(--t-body); font-weight: 600; padding: 6px 10px; border-radius: var(--radius);
   border: 1px solid var(--fg); background: var(--panel); color: var(--fg); transition: background-color 0.2s ease, color 0.2s ease, scale 0.16s var(--ease);
 }
-@media (hover: hover) and (pointer: fine) { .fund-btn:hover { background: var(--fg); color: var(--bg); } .fund-btn:hover .fund-pct { color: inherit; } }
-.fund-pct { color: var(--muted); }
+@media (hover: hover) and (pointer: fine) { .fund-btn:hover { background: var(--fg); color: var(--bg); } }
 .fund-dialog {
   width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 0; overflow-x: hidden; overflow-y: auto;
   border: 1px solid var(--fg); border-radius: var(--radius); background: var(--panel); color: var(--fg); box-shadow: var(--shadow);
@@ -510,12 +509,6 @@ td .tag.with-icon { display: inline-flex; margin-left: 6px; gap: 4px; }
 .fund-head h2 .icon { color: var(--fg); }
 .icon-btn { display: inline-flex; padding: 6px; border: 0; border-radius: var(--radius); background: transparent; color: var(--muted); cursor: pointer; }
 @media (hover: hover) and (pointer: fine) { .icon-btn:hover { background: var(--track); color: var(--fg); } }
-.fund-progress { display: grid; gap: 8px; }
-.fund-progress .fill { background: var(--fg); }
-.fund-figures { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.fund-raised { font-size: var(--t-bold); font-weight: 750; font-stretch: 112%; letter-spacing: -0.01em; }
-.fund-sub { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.fund-updated { font-size: var(--t-body); }
 .fund-amounts { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .fund-amounts legend { font-size: var(--t-body); color: var(--muted); margin-bottom: 6px; padding: 0; }
 .chip {
@@ -538,12 +531,6 @@ td .tag.with-icon { display: inline-flex; margin-left: 6px; gap: 4px; }
 .fund-safe { font-size: var(--t-body); }
 .fund-verify { margin: 0; font-size: var(--t-body); align-items: flex-start; color: var(--fg); }
 .fund-verify .icon { margin-top: 2px; color: var(--ok); }
-.fund-recent { display: grid; gap: 8px; }
-.fund-recent h3 { font-size: var(--t-body); }
-.fund-recent h3 .icon { color: var(--bad); }
-.fund-recent ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.fund-recent li { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; font-size: var(--t-body); }
-.fund-who { font-weight: 600; overflow-wrap: anywhere; }
 
 /* ---- Reduced motion: everything at rest ------------------------------------------------------------ */
 @media (prefers-reduced-motion: reduce) {
