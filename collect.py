@@ -699,6 +699,12 @@ def main():
         sats.append({"repo": repo, "role": role, "stars": info["stargazers_count"],
                      "last_push": info["pushed_at"][:10], "commits_30d": n, "archived": info["archived"]})
 
+    # Each day's best GTA stage per emulator, so the site can chart the readiness score day by day.
+    gta = gta_progress(cache)
+    for snap in snaps:
+        for key in GTA_TITLES:
+            r = gta[key]["projects"].get(snap["project"]) or {}
+            snap[f"{key}_stage"], snap[f"{key}_fps"] = r.get("stage"), r.get("fps")
     snapshots = upsert(snapshots, snaps, ["date", "project"])
     compat_hist = upsert(compat_hist, today_compat, ["date", "project", "rank"])
     cutoff = (now.date() - dt.timedelta(days=MERGE_LIST_DAYS - 1)).isoformat()
@@ -714,7 +720,7 @@ def main():
     save(out / "top_contributors.json", {"date": today, "projects": top_people})
     save(out / "playable_games.json", playable_games(cache))
     save(out / "game_details.json", game_details(cache))
-    save(out / "gta.json", gta_progress(cache))
+    save(out / "gta.json", gta)
     publish_to_web(work, out)
     print(json.dumps({"date": today, "snapshots": snaps}, indent=1))
 

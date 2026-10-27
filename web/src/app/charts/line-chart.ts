@@ -25,7 +25,7 @@ export interface LineSeries {
              role="img" [attr.aria-label]="label()" (mousemove)="move($event)">
           @for (t of ticks(); track t) {
             <line class="gridline" [attr.x1]="left()" [attr.x2]="width() - right()" [attr.y1]="y(t)" [attr.y2]="y(t)" />
-            <text class="tick" [attr.x]="left() - 8" [attr.y]="y(t)" dy="0.32em" text-anchor="end">{{ fmt(t) }}</text>
+            <text class="tick" [attr.x]="left() - 8" [attr.y]="y(t)" dy="0.32em" text-anchor="end">{{ fmt(t) + unit() }}</text>
           }
           <line class="axis" [attr.x1]="left()" [attr.x2]="width() - right()" [attr.y1]="y(0)" [attr.y2]="y(0)" />
           @for (l of xLabels(); track l.date) {
@@ -60,6 +60,8 @@ export interface LineSeries {
 export class LineChart {
   readonly series = input.required<LineSeries[]>();
   readonly label = input('');
+  /** Appended to every value shown, e.g. "%". */
+  readonly unit = input('');
 
   protected readonly height = 280;
   protected readonly top = 12;
@@ -75,9 +77,9 @@ export class LineChart {
   protected readonly ticks = computed(() =>
     niceTicks(Math.max(1, ...this.series().flatMap((s) => s.points.map((p) => p.value))), 4),
   );
-  protected readonly left = computed(() => fmt(this.ticks().at(-1) ?? 0).length * 9 + 16);
+  protected readonly left = computed(() => (fmt(this.ticks().at(-1) ?? 0) + this.unit()).length * 9 + 16);
   protected readonly right = computed(() => {
-    const longest = Math.max(0, ...this.series().map((s) => fmt(s.points.at(-1)?.value).length));
+    const longest = Math.max(0, ...this.series().map((s) => (fmt(s.points.at(-1)?.value) + this.unit()).length));
     return longest * 10 + 16;
   });
   private readonly t0 = computed(() => Date.parse(this.dates()[0] ?? '1970-01-01'));
@@ -103,7 +105,7 @@ export class LineChart {
       .filter((s) => s.points.length)
       .map((s) => {
         const last = s.points.at(-1)!;
-        return { name: s.name, color: s.color, text: fmt(last.value), x: this.x(last.date), y: this.y(last.value) };
+        return { name: s.name, color: s.color, text: fmt(last.value) + this.unit(), x: this.x(last.date), y: this.y(last.value) };
       })
       .sort((a, b) => a.y - b.y);
     for (let i = 1; i < items.length; i++) if (items[i].y - items[i - 1].y < 20) items[i].y = items[i - 1].y + 20;
@@ -116,7 +118,7 @@ export class LineChart {
     const rows = this.series()
       .map((s) => {
         const p = [...s.points].reverse().find((pt) => pt.date <= hd);
-        return p ? { name: s.name, color: s.color, value: fmt(p.value) + (p.live ? ' (live)' : '') } : null;
+        return p ? { name: s.name, color: s.color, value: fmt(p.value) + this.unit() + (p.live ? ' (live)' : '') } : null;
       })
       .filter((r): r is NonNullable<typeof r> => r !== null);
     const left = Math.min(this.width() - 90, Math.max(90, this.x(hd)));

@@ -43,6 +43,18 @@ FAQ = [
     ("Is PS5 emulation legal?",
      "Emulators themselves are generally legal to make and use. Downloading games you don't own is piracy. "
      "Beware sites offering PS5 emulator downloads: the real projects are free and only on their GitHub pages."),
+    ("Is PCSX5 a real PS5 emulator?",
+     "There's no sign it is. PCSX5 publishes no source code and no compatibility list, and nobody outside the "
+     "project has shown it running a PS5 game. Its name copies PCSX2, the real PS2 emulator, as the fake PCSX4 did "
+     "before it. Don't download or install it. The PS5 emulators that do run games, AnyPS5, KytyPS5 and SharpEmu, "
+     "are free and open source on GitHub."),
+    ("Can a PS5 play PC games?",
+     "Only a jailbroken one, and that's the reverse of emulation. Since September 2026, hobbyists have ported "
+     "Wine, the Windows layer the Steam Deck uses, into a PS5 app and written a Vulkan graphics driver for the "
+     "PS5's chip. An open-source launcher called Playden installs games from the owner's own Steam library. Its "
+     "compatibility list showed 143 of 207 tested Windows games working on October 26, 2026. It needs a "
+     "jailbroken PS5 on older firmware, it's alpha software, and games with kernel anti-cheat, such as Marvel "
+     "Rivals, don't run. It doesn't help run PS5 games on PC, which is what this tracker follows."),
 ]
 
 e = html.escape

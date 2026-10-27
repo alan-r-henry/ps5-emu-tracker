@@ -46,6 +46,11 @@ export interface Snapshot {
   shader_done?: number;
   shader_total?: number;
   open_blockers?: number;
+  /** Best stage this project had reached on GTA 6 and GTA V (PS5) that day; recorded from late October 2026. */
+  gta6_stage?: string | null;
+  gta6_fps?: number | null;
+  gtav_stage?: string | null;
+  gtav_fps?: number | null;
 }
 
 export interface CompatRow {

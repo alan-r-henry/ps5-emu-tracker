@@ -136,6 +136,15 @@ export class App {
     return rows.reduce<Snapshot | undefined>((a, b) => (!a || b.date > a.date ? b : a), undefined);
   }
 
+  /** AnyPS5's system-function counts, live when its progress report answered, else the last snapshot. */
+  protected readonly anyLib = computed(() => {
+    const live = this.svc.live().AnyPS5.libraries;
+    if (live) return { done: live.done, total: live.total, percent: live.percent };
+    const s = this.latestSnap('AnyPS5');
+    return s?.lib_percent != null && s.lib_done != null && s.lib_total != null
+      ? { done: s.lib_done, total: s.lib_total, percent: s.lib_percent } : null;
+  });
+
   /** AnyPS5's share of known PS5 system functions, live when its progress report answered. */
   protected readonly anyLibShare = computed(() => {
     const live = this.svc.live().AnyPS5.libraries;

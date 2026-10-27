@@ -446,6 +446,15 @@ h3 > .icon { color: var(--muted); }
 .gta-list li.done .icon { color: var(--ok); }
 .gta-list .gta-why { grid-column: 2 / -1; margin-top: -4px; }
 .gta-more { margin: 14px 0 0; font-weight: 600; }
+.gta-history { margin-top: var(--gutter); }
+.gta-why-card { display: grid; gap: 12px; align-content: start; }
+.gta-why-card p { margin: 0; }
+.gta-why-sum .num { font-weight: 650; }
+.gta-changes { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.gta-changes li { display: grid; gap: 4px; padding-top: 12px; border-top: 1px solid var(--line); }
+.gta-change-head { display: flex; justify-content: space-between; gap: 4px 12px; flex-wrap: wrap; }
+.gta-change-head .up { color: var(--ok); }
+.gta-change-head .down { color: var(--bad); }
 
 /* ---- Tables, people, questions --------------------------------------------------------------------- */
 .tablebox { max-height: 30rem; overflow: auto; border: 1px solid var(--line); background: var(--panel); }

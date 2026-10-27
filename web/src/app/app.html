@@ -109,7 +109,7 @@
       </div>
     </section>
 
-    <app-gta [libraryShare]="anyLibShare()" [hasPage]="hasGamePages()" />
+    <app-gta [libraries]="anyLib()" [snapshots]="svc.history()?.snapshots ?? []" [hasPage]="hasGamePages()" />
 
     <section class="sec" id="road" aria-labelledby="road-h">
       <div class="sec-head">
@@ -348,6 +348,14 @@
       <details>
         <summary>Is PS5 emulation legal?</summary>
         <p>Emulators themselves are generally legal to make and use. Downloading games you don't own is piracy. These projects expect you to use your own console's games and firmware. Beware sites offering "PS5 emulator downloads": the real projects are free and only on the GitHub pages linked below.</p>
+      </details>
+      <details>
+        <summary>Is PCSX5 a real PS5 emulator?</summary>
+        <p>There's no sign it is. PCSX5 publishes no source code and no compatibility list, and nobody outside the project has shown it running a PS5 game. Its name copies PCSX2, the real PS2 emulator, as the fake PCSX4 did before it. Don't download or install it. The PS5 emulators that do run games, <a href="#projects">AnyPS5, KytyPS5 and SharpEmu</a>, are free and open source on GitHub.</p>
+      </details>
+      <details>
+        <summary>Can a PS5 play PC games?</summary>
+        <p>Only a jailbroken one, and that's the reverse of emulation. Since September 2026, hobbyists have ported Wine, the Windows layer the Steam Deck uses, into a PS5 app and written a Vulkan graphics driver for the PS5's chip. An open-source launcher called Playden installs games from the owner's own Steam library. Its compatibility list showed 143 of 207 tested Windows games working on October 26, 2026. It needs a jailbroken PS5 on older firmware, it's alpha software, and games with kernel anti-cheat, such as Marvel Rivals, don't run. It doesn't help run PS5 games on PC, which is what this tracker follows.</p>
       </details>
       <details>
         <summary>How often is this tracker updated?</summary>
