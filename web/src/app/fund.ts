@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, signal, viewChild } from '@angular/core';
-import QRCode from 'qrcode';
 import { Icon } from './icon';
 
 /** public/data/fund.json, edited by hand. */
@@ -61,9 +60,10 @@ const UPI_ID = /^[\w.-]{2,256}@[a-zA-Z][\w.-]{1,64}$/;
                 @if (f.upi.name) {
                   <p class="fund-verify with-icon"><app-icon name="check" [size]="14" /><span>Before you pay, check your app shows the payee as <b>{{ f.upi.name }}</b>. If it shows any other name, don't pay.</span></p>
                 }
-                <button type="button" class="btn with-icon" (click)="copyId(id)">
+                <button type="button" class="btn with-icon" (click)="copyId(id)" [attr.aria-label]="'Copy UPI ID ' + id">
                   <app-icon [name]="copied() ? 'check' : 'copy'" [size]="14" />{{ copied() ? 'Copied' : id }}
                 </button>
+                <span class="sr-only" role="status">{{ copied() ? 'UPI ID copied' : '' }}</span>
               </div>
             </section>
           }
@@ -92,6 +92,7 @@ export class FundButton {
   protected readonly amount = signal(500);
   protected readonly copied = signal(false);
   protected readonly qr = signal('');
+  private readonly opened = signal(false);
   private readonly dlg = viewChild<ElementRef<HTMLDialogElement>>('dlg');
 
   /** Only well-formed values from fund.json reach a link: a UPI address and an https Ko-fi page. */
@@ -125,11 +126,14 @@ export class FundButton {
       .then((f: FundConfig | null) => this.fund.set(f))
       .catch(() => this.fund.set(null));
 
-    // Black on white, the contrast scanners expect, in both themes.
+    // Black on white, the contrast scanners expect, in both themes. The QR library loads only once the dialog
+    // opens, so most visitors never download it.
     effect(() => {
       const link = this.upiLink();
-      if (!link) return;
-      QRCode.toDataURL(link, { margin: 1, width: 360, errorCorrectionLevel: 'M' })
+      if (!link || !this.opened()) return;
+      import('qrcode')
+        // A CommonJS package: loaded lazily, its functions sit on the default export.
+        .then((m) => m.default.toDataURL(link, { margin: 1, width: 360, errorCorrectionLevel: 'M' }))
         .then((url) => this.qr.set(url))
         .catch(() => this.qr.set(''));
     });
@@ -140,6 +144,7 @@ export class FundButton {
   }
 
   protected open(): void {
+    this.opened.set(true);
     this.dlg()?.nativeElement.showModal();
   }
 

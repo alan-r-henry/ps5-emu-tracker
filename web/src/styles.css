@@ -446,6 +446,9 @@ h3 > .icon { color: var(--muted); }
 .gta-list li.done .icon { color: var(--ok); }
 .gta-list .gta-why { grid-column: 2 / -1; margin-top: -4px; }
 .gta-more { margin: 14px 0 0; font-weight: 600; }
+.stale { color: var(--bad); align-items: flex-start; }
+.recent-games { margin: 14px 0 0; max-width: 80ch; }
+.stale .icon { margin-top: 3px; }
 .gta-history { margin-top: var(--gutter); }
 .gta-why-card { display: grid; gap: 12px; align-content: start; }
 .gta-why-card p { margin: 0; }

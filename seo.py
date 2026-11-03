@@ -9,7 +9,9 @@ structured-data block, writes a static page for every game that reaches gameplay
 index, and rewrites the sitemap to list them all. Everything taken from the data files is HTML-escaped.
 Standard library only, so it runs on a bare CI runner.
 """
+import base64
 import datetime as dt
+import hashlib
 import html
 import json
 import re
@@ -17,7 +19,7 @@ import shutil
 import sys
 import unicodedata
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote as url_quote, urlsplit
 
 SITE = "https://alan-r-henry.github.io/ps5-emu-tracker/"
 TOP_TIER = {"AnyPS5": "playable", "KytyPS5": "in-game", "SharpEmu": "playable"}
@@ -27,7 +29,7 @@ STAGE_RANK = ["none", "boots", "menus", "ingame", "playable"]
 GTA_QUESTIONS = 3  # the first entries of FAQ, repeated on the gta-6/ page
 FAQ = [
     ("Can I play GTA 6 on PC with a PS5 emulator?",
-     "Not yet, and not at launch. GTA 6 comes out on PS5 and Xbox Series X|S on November 19, 2026. Before any "
+     "{gta6_lead} GTA 6 {gta6_verb} on PS5 and Xbox Series X|S on November 19, 2026. Before any "
      "emulator can try it, someone has to copy the game off a PS5, and that's blocked for now: GTA 6 reportedly "
      "needs firmware 14.10, and there's no public way to copy games off a PS5 on that firmware. Even then, no PS5 "
      "emulator runs a game this size yet. The GTA 6 readiness score tracks each step."),
@@ -58,6 +60,13 @@ FAQ = [
 ]
 
 e = html.escape
+
+
+def faq_text(answer, today):
+    """Fills the FAQ's release-day wording, so it reads right before and after GTA 6 comes out."""
+    out = today >= GTA6_RELEASE
+    return answer.format(gta6_lead="Not yet." if out else "Not yet, and not at launch.",
+                         gta6_verb="came out" if out else "comes out") if answer else answer
 
 
 def load(data, name, default):
@@ -156,7 +165,7 @@ def static_hero(snaps, games, today):
         f'<span class="meter-measure">{measure}</span></a></li>' for name, n, share, measure in hero_progress(snaps))
     nav = "".join(f'<li><a class="nav-link" href="{h}">{label}</a></li>' for h, label in NAV)
     gta = (f'<a class="hero-gta" href="#gta6">GTA 6 reaches PS5 in <b class="num">{days}</b> {"day" if days == 1 else "days"}</a>'
-           if days > 0 else '<a class="hero-gta" href="#gta6">GTA 6 is out on PS5</a>')
+           if days > 0 else f'<a class="hero-gta" href="#gta6">GTA 6 is out on PS5{" today" if days == 0 else ""}</a>')
     return f"""<header class="topbar"><a class="brand" href="#top"><span class="reg" aria-hidden="true"></span><span>PS5 <span class="brand-mid">Emulation </span>Tracker</span></a>
 <nav class="nav" aria-label="Sections"><ul class="nav-list">{nav}<li><a class="nav-link" href="games/">All games</a></li></ul></nav></header>
 <div class="page" id="top">
@@ -198,7 +207,7 @@ def build(data, today):
             f"{num(unique_titles)} games reach gameplay on at least one of them, out of {num(catalog)} PS5 titles."
             if games else None,
     }
-    faq = [(q, a or answers.get(q)) for q, a in FAQ]
+    faq = [(q, faq_text(a, today) or answers.get(q)) for q, a in FAQ]
     faq = [(q, a) for q, a in faq if a]
 
     description = (
@@ -224,11 +233,16 @@ def build(data, today):
     out.append("</ul>")
 
     if gta:
-        six = gta.get("gta6") or {}
+        released = (gta.get("gta6") or {}).get("released") or ""
+        stuck = not status.get("copyable")
+        if released and released <= today:
+            when = f"GTA 6 came out on PS5 on {e(long_date(released))}"
+            when += "; no emulator can test it until someone can copy it off a PS5. " if stuck else ". "
+        else:
+            when = f"GTA 6 comes out on PS5 on {e(long_date(released))}; no emulator can test it before then"
+            when += ", or until someone can copy it off a PS5. " if stuck else ". "
         out += ["<h2>GTA 6 and GTA V on PS5 emulators</h2>",
-                f"<p>GTA 6 emulation readiness: {readiness}%. GTA 6 comes out on PS5 on "
-                f"{e(long_date(six.get('released') or ''))}; no emulator can test it before then"
-                f"{', or until someone can copy it off a PS5' if not status.get('copyable') else ''}. "
+                f"<p>GTA 6 emulation readiness: {readiness}%. {when}"
                 f'<a href="{BASE}gta-6/">Can you play GTA 6 on PC?</a></p>']
         if gtav_text:
             out.append(f"<p>GTA V (PS5 version, same RAGE engine): {e(gtav_text)}.</p>")
@@ -299,13 +313,33 @@ PROJECT_LINKS = {  # name: (GitHub repository, public compatibility list)
     "KytyPS5": ("https://github.com/KytyPS5/KytyPS5", "https://kytyps5.github.io/"),
     "AnyPS5": ("https://github.com/boykopovar/AnyPS5", "https://alxcbtw.github.io/anyps5-roadmap/"),
 }
+
+
+def report_link(project, grp):
+    """Where a player sends their own result for this game, prefilled where the project's form allows it:
+    SharpEmu and KytyPS5 take GitHub issues; AnyPS5 keeps one discussion thread per title."""
+    tid = grp["ids"][0] if grp["ids"] else "PPSAxxxxx"
+    if project == "SharpEmu":
+        url = ("https://github.com/sharpemu/sharpemu-site/issues/new?template=compatibility_report.yml&title="
+               + url_quote(f"{tid} - {grp['title']}"))
+    elif project == "KytyPS5":
+        url = ("https://github.com/KytyPS5/KytyPS5/issues/new?template=kytyps5-game-emulation.yaml&title="
+               + url_quote(f"[GAME STATUS]: {grp['title']}"))
+    else:
+        url = "https://github.com/boykopovar/AnyPS5/discussions/categories/game-bring-up"
+    return f'<p class="gp-send">Tested it yourself? <a href="{e(url)}">Send your {project} result</a></p>'
+
+
 # The workflow writes the data branch, so links and images are checked again here, as collect.py does.
 SAFE_REPORT = re.compile(r"https://(github\.com|kytyps5\.github\.io|sharpemu\.app|alxcbtw\.github\.io|"
                          r"boykopovar\.github\.io)/[^\s\"'<>\\]*\Z")
 SAFE_COVER = re.compile(r"https://image\.api\.playstation\.com/[\w./%-]+\Z")
-PAGE_CSP = ("default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; "
+# 'inline-speculation-rules' allows only the prefetch rules below, never inline JavaScript.
+PAGE_CSP = ("default-src 'none'; script-src 'self' 'inline-speculation-rules'; style-src 'self'; font-src 'self'; "
             "img-src 'self' https://image.api.playstation.com; base-uri 'none'; form-action 'none'")
 BASE = urlsplit(SITE).path  # "/ps5-emu-tracker/"
+# Browsers that support it fetch a game page while the pointer rests on its link, so it opens at once.
+PREFETCH = json.dumps({"prefetch": [{"where": {"href_matches": [f"{BASE}games/*", f"{BASE}gta-6/"]}, "eagerness": "moderate"}]})
 INK = {"AnyPS5": "c", "KytyPS5": "m", "SharpEmu": "y"}  # each emulator's colour class (.ink-c etc. in styles.css)
 FONT_PRELOAD = ""  # set by main() once the built font file is known
 
@@ -370,6 +404,9 @@ def initials(title):
 GAME_SORTS = [("tested", "Testing date (newest)"), ("title", "Alphabetical, A to Z"),
               ("popularity", "Popularity (most ratings)"), ("released", "Release date (newest)"),
               ("fps", "Frame rate (highest)")]
+SEARCH_ICON = ('<span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" '
+               'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+               '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>')
 SORT_ICON = ('<span class="icon"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" '
              'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
              '<path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg></span>')
@@ -424,7 +461,9 @@ def page_shell(title, description, url, ld, body, style_link, image=None, robots
   <meta name="description" content="{e(description)}">
   <meta name="robots" content="{robots}">
   <meta name="theme-color" content="#0f141c">
-{f'  <link rel="canonical" href="{e(url)}">' + chr(10) if url else ''}{FONT_PRELOAD}
+{f'  <link rel="canonical" href="{e(url)}">' + chr(10) if url else ''}{FONT_PRELOAD}  <link rel="preconnect" href="https://image.api.playstation.com">
+  <link rel="alternate" type="application/atom+xml" href="{BASE}feed.xml" title="New playable PS5 games">
+  <script type="speculationrules">{PREFETCH}</script>
   <link rel="icon" href="{BASE}favicon.ico" sizes="48x48">
   <link rel="icon" href="{BASE}icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="{BASE}apple-touch-icon.png">
@@ -445,7 +484,7 @@ def page_shell(title, description, url, ld, body, style_link, image=None, robots
   <footer class="gp-foot">
     <p>Statuses come from each project's public compatibility list and are checked every 3 hours. Frame rates are what
     testers reported on their own hardware. Not affiliated with Sony, Rockstar or the emulator projects.</p>
-    <ul class="gp-foot-links"><li><a href="{BASE}">PS5 Emulation Tracker</a></li><li><a href="{BASE}games/">All games</a></li><li><a href="{BASE}gta-6/">GTA 6 on PC</a></li><li><a href="{BASE}#method">How this is measured</a></li></ul>
+    <ul class="gp-foot-links"><li><a href="{BASE}">PS5 Emulation Tracker</a></li><li><a href="{BASE}games/">All games</a></li><li><a href="{BASE}gta-6/">GTA 6 on PC</a></li><li><a href="{BASE}#method">How this is measured</a></li><li><a href="{BASE}feed.xml">Feed of new playable games</a></li></ul>
   </footer>
 </body>
 </html>
@@ -532,8 +571,7 @@ def emulator_card(project, row, grp):
                     "</section>")
         if not st:
             return (f'<section class="gp-emu gp-none ink-{INK[project]}"><h2>{project}</h2><p class="gp-status">Not tested yet</p>'
-                    f'<p>Nobody has reported this game on {project}. <a href="{compat}">{project}\'s compatibility list</a> '
-                    "explains how to send a test report.</p></section>")
+                    f'<p>Nobody has reported this game on {project} yet.</p>{report_link(project, grp)}</section>')
         meaning = DETAILS.meanings.get(st["status"]) if project == "AnyPS5" else None
         facts = [("Latest test", long_date(st.get("tested") or "") or None),
                  ("Test reports", num(st["reports"]) if st.get("reports") else None)]
@@ -542,7 +580,7 @@ def emulator_card(project, row, grp):
         return (f'<section class="gp-emu gp-none ink-{INK[project]}"><h2>{project}</h2>'
                 f'<p class="gp-status">{e(status_label(project, st["status"]))}</p>'
                 f'{f"<p>{e(meaning)}</p>" if meaning else ""}<dl>{dl}</dl>'
-                f'<p>Not {tier} yet. <a href="{e(link)}">See the {project} reports</a></p></section>')
+                f'<p>Not {tier} yet. <a href="{e(link)}">See the {project} reports</a></p>{report_link(project, grp)}</section>')
     # Only the newest reports are kept, so "first" is known only when none have been dropped.
     complete = not st or not st.get("reports") or st["reports"] <= len(reports)
     reached = min((r["date"] for r in reports if r.get("status") == TOP_STATUS[project] and r.get("date")),
@@ -558,7 +596,7 @@ def emulator_card(project, row, grp):
     report = (f'<p><a href="{e(row["url"])}">Read the {project} test report</a></p>'
               if SAFE_REPORT.match(row.get("url") or "") else "")
     return (f'<section class="gp-emu gp-ok ink-{INK[project]}"><h2>{project}</h2><p class="gp-status">{tier.capitalize()}</p>'
-            f"<dl>{dl}</dl>{quote}{report}</section>")
+            f"<dl>{dl}</dl>{quote}{report}{report_link(project, grp)}</section>")
 
 
 def game_page(grp, related, today, style_link):
@@ -689,6 +727,11 @@ def test_history(grp, limit=12):
     </section>"""
 
 
+def acronym(title):
+    """First letters of a title's words, so a search for "gta" or "gow" finds the game."""
+    return "".join(w[0] for w in re.findall(r"[^\W_]+", title))
+
+
 def games_index(groups, today, style_link):
     url = SITE + "games/"
     games = sorted(groups.values(), key=lambda g: g["title"].casefold())
@@ -710,7 +753,8 @@ def games_index(groups, today, style_link):
         if g["released"]:
             meta += f' · {g["released"][:4]}'
         tested = f'<span class="gp-meta">Tested {e(short_date(g["tested"]))}</span>' if g["tested"] else ""
-        keys = {"tested": g["tested"], "ratings": g["ratings"] or None, "released": g["released"], "fps": fps}
+        keys = {"tested": g["tested"], "ratings": g["ratings"] or None, "released": g["released"], "fps": fps,
+                "emu": " ".join(p for p in ORDER if p in g["rows"]), "q": " ".join([g["title"], acronym(g["title"]), *g["ids"]]).casefold()}
         data = "".join(f' data-{k}="{e(str(v))}"' for k, v in keys.items() if v is not None)
         items.append(f'<li class="ink-{ink}"{data}>{thumb}<a href="{BASE}games/{g["slug"]}/">{e(g["title"])}</a>'
                      f'<span class="gp-chips">{chips}</span><span class="gp-meta">{e(meta)}</span>{tested}</li>')
@@ -723,13 +767,19 @@ def games_index(groups, today, style_link):
     <h1>PS5 games that run on PC emulators</h1>
     <p class="gp-lead">{e(summary)} Each game's page has the test reports, hardware and frame rates.</p>
     <div class="tools gp-tools">
+      <label class="search">{SEARCH_ICON}<input id="gp-q" type="search" placeholder="Search games or title IDs" aria-label="Search games" aria-controls="gp-index"></label>
+      <label class="sort-by with-icon"><span class="sr-only">Show games on</span>
+        <select id="gp-emu" aria-controls="gp-index"><option value="">Every emulator</option>{''.join(f'<option value="{p}">{p} ({counts[p]} {e(TOP_TIER[p])})</option>' for p in ORDER)}</select>
+      </label>
       <label class="sort-by with-icon">{SORT_ICON}<span class="sr-only">Sort games by</span>
         <select id="gp-sort">{''.join(f'<option value="{v}"{" selected" if v == "title" else ""}>{label}</option>' for v, label in GAME_SORTS)}</select>
       </label>
+      <span class="note num" id="gp-count" role="status"></span>
     </div>
     <ul class="gp-index" id="gp-index">
       {''.join(items)}
-    </ul>"""
+    </ul>
+    <p class="gp-nomatch" id="gp-nomatch" hidden>No games match. Try fewer letters, or another emulator.</p>"""
     ld = page_graph("CollectionPage", url, title, description, today,
                     [("PS5 Emulation Tracker", SITE), ("Games", url)])
     return page_shell(title + " | PS5 Emulation Tracker", description, url, ld, body, style_link, script="games.js")
@@ -773,6 +823,114 @@ GTA_STAGE = {"none": "Not tested", "boots": "Boots", "menus": "Reaches the menus
              "playable": "Playable"}
 
 
+def gta_history(gta, snapshots, status):
+    """Readiness on each saved day, by the same rule as gta.ts days(): a snapshot's own GTA stages when it recorded
+    them (from late October 2026), otherwise a current report counts from its test date on."""
+    by_day = {}
+    for snap in snapshots:
+        by_day.setdefault(snap["date"][:10], {})[snap["project"]] = snap
+    out = []
+    for day in sorted(by_day):
+        rows = by_day[day]
+        any_ = rows.get("AnyPS5") or {}
+        lib = tuple(any_.get(k) for k in ("lib_done", "lib_total", "lib_percent"))
+        if None in lib:
+            continue
+        day_gta = {}
+        for key in ("gta6", "gtav"):
+            game = dict(gta.get(key) or {})
+            projects = {}
+            for project in ORDER:
+                row = rows.get(project)
+                if row is not None and f"{key}_stage" in row:
+                    stage = row.get(f"{key}_stage")
+                    projects[project] = {"stage": stage, "fps": row.get(f"{key}_fps")} if stage else None
+                else:
+                    r = (game.get("projects") or {}).get(project)
+                    projects[project] = r if r and (not r.get("tested") or r["tested"] <= day) else None
+            game["projects"] = projects
+            day_gta[key] = game
+        day_status = dict(status, copyable=status.get("copyable") is True and status.get("updated", "") <= day)
+        milestones = gta_milestones(day_gta, lib[2] / 100, day, day_status)
+        out.append({"day": day, "milestones": milestones, "lib": lib,
+                    "points": sum(w * prog for _, items in milestones for _, w, prog, _ in items)})
+    return out
+
+
+def lib_change(a, b):
+    """Why AnyPS5's system-function milestone moved between two days, in words (as libDetail() in gta.ts)."""
+    found, done = b[1] - a[1], b[0] - a[0]
+    parts = []
+    if found:
+        parts.append(f"AnyPS5's list of known PS5 system functions {'grew' if found > 0 else 'shrank'} by {num(abs(found))} to {num(b[1])}")
+    if done:
+        parts.append(f"{'it' if parts else 'AnyPS5'} {'implemented' if done > 0 else 'lost'} {num(abs(done))} ({num(b[0])} done)")
+    lead = ", while ".join(parts) + ". " if parts else ""
+    fell = b[2] < a[2]
+    tail = (" The share can fall while AnyPS5 makes progress: when it finds functions it hadn't counted, the total "
+            "grows faster than the number done.") if fell and done > 0 else ""
+    return f"{lead}Its share {'fell' if fell else 'rose'} from {a[2]:.1f}% to {b[2]:.1f}%.{tail}"
+
+
+def readiness_why(history):
+    """The latest day against the last day the score was different (or the day before, if it never was),
+    milestone by milestone, plus the biggest one-day drop. HTML."""
+    if len(history) < 2:
+        return ""
+    b = history[-1]
+    a = next((d for d in reversed(history[:-1]) if abs(d["points"] - b["points"]) >= 0.05), history[-2])
+    items = []
+    for (group, before), (_, after) in zip(a["milestones"], b["milestones"]):
+        game = "GTA 6: " if group.startswith("GTA 6") else "GTA V: " if group.startswith("GTA V") else ""
+        for (label, w, p0, _), (_, _, p1, _) in zip(before, after):
+            if abs(w * (p1 - p0)) < 0.05:
+                continue
+            detail = lib_change(a["lib"], b["lib"]) if w == 15 else "Now met." if p1 > p0 else "No longer met: the latest report no longer shows it."
+            items.append(f'<li><b>{e(game + label)}</b>: {round(w * p0, 1):g} → {round(w * p1, 1):g} points. {e(detail)}</li>')
+    delta = round(b["points"] - a["points"], 1)
+    out = [f'<p>{round(a["points"], 1):g}% on {e(long_date(a["day"]))}, {round(b["points"], 1):g}% on {e(long_date(b["day"]))}'
+           + (f" ({'+' if delta > 0 else '−'}{abs(delta):g} points)." if delta else ".") + "</p>"]
+    out.append(f'<ul class="gp-changes">{"".join(items)}</ul>' if items else "<p>No milestone has changed since then.</p>")
+    drops = [(history[i]["points"] - history[i - 1]["points"], i) for i in range(1, len(history))]
+    worst, i = min(drops, default=(0, 0))
+    if worst <= -0.5:
+        x, y = history[i - 1]["lib"], history[i]["lib"]
+        why = (f" AnyPS5's list of known PS5 system functions grew from {num(x[1])} to {num(y[1])} that day, so its share "
+               f"fell from {x[2]:.1f}% to {y[2]:.1f}%.") if y[1] > x[1] else ""
+        out.append(f"<p>Biggest one-day drop: {round(-worst, 1):g} points on {e(long_date(history[i]['day']))}.{e(why)}</p>")
+    return "".join(out)
+
+
+def readiness_chart(history):
+    """Readiness by day as an inline SVG line (no inline styles, so the CSP holds), with the figures as a table."""
+    if len(history) < 2:
+        return ""
+    # Drawn at 480 units wide and shown at most 520px wide, so labels stay near body size on desktop and phones.
+    w, h, left, right, top, bottom = 480, 230, 46, 62, 12, 30
+    top_value = max(10, -(-max(d["points"] for d in history) // 10) * 10)
+    t0 = dt.date.fromisoformat(history[0]["day"])
+    span = max((dt.date.fromisoformat(history[-1]["day"]) - t0).days, 1)
+    x = lambda day: left + (w - left - right) * (dt.date.fromisoformat(day) - t0).days / span
+    y = lambda v: top + (h - top - bottom) * (1 - v / top_value)
+    grid = "".join(f'<line class="gp-grid" x1="{left}" x2="{w - right}" y1="{y(t):.1f}" y2="{y(t):.1f}"/>'
+                   f'<text class="gp-tick" x="{left - 6}" y="{y(t):.1f}" dy="0.32em" text-anchor="end">{t:g}%</text>'
+                   for t in range(0, int(top_value) + 1, 10))
+    picks = sorted({history[0]["day"], history[len(history) // 2]["day"], history[-1]["day"]})
+    labels = "".join(f'<text class="gp-tick" x="{x(d):.1f}" y="{h - 6}" text-anchor="{a}">{e(short_date(d))}</text>'
+                     for d, a in zip(picks, ("start", "middle", "end")[-len(picks):] if len(picks) == 3 else ("start", "end")))
+    line = " ".join(f"{'M' if i == 0 else 'L'}{x(d['day']):.1f},{y(d['points']):.1f}" for i, d in enumerate(history))
+    dots = "".join(f'<circle cx="{x(d["day"]):.1f}" cy="{y(d["points"]):.1f}" r="2.5"/>' for d in history)
+    last = history[-1]
+    end = f'<text class="gp-end" x="{x(last["day"]) + 8:.1f}" y="{y(last["points"]):.1f}" dy="0.32em">{round(last["points"], 1):g}%</text>'
+    rows = "".join(f'<tr><th scope="row">{e(short_date(d["day"]))}</th><td>{round(d["points"], 1):g}%</td></tr>' for d in history)
+    return (f'<svg class="gp-chart" viewBox="0 0 {w} {h}" role="img" aria-label="GTA 6 emulation readiness by day, '
+            f'from {round(history[0]["points"], 1):g}% on {e(short_date(history[0]["day"]))} to {round(last["points"], 1):g}% '
+            f'on {e(short_date(last["day"]))}">{grid}{labels}<path class="gp-line" d="{line}"/>'
+            f'<g class="gp-dots">{dots}</g>{end}</svg>'
+            f'<div class="sr-only"><table><caption>GTA 6 emulation readiness by day</caption>'
+            f'<thead><tr><th scope="col">Day</th><th scope="col">Readiness</th></tr></thead><tbody>{rows}</tbody></table></div>')
+
+
 def write_gta_page(site, groups, today, style_link):
     """gta-6/: the question everyone searches around GTA 6's launch, answered from the day's data."""
     data = site / "data"
@@ -780,7 +938,9 @@ def write_gta_page(site, groups, today, style_link):
     if not gta.get("gta6"):
         return False
     status = gta_status(data)
-    snaps = latest_snapshots(load(data, "snapshots", []))
+    all_snaps = load(data, "snapshots", [])
+    snaps = latest_snapshots(all_snaps)
+    history = gta_history(gta, all_snaps, status)
     lib = snaps.get("AnyPS5", {}).get("lib_percent")
     lib_share = lib / 100 if isinstance(lib, (int, float)) else None
     milestones = gta_milestones(gta, lib_share, today, status)
@@ -827,7 +987,7 @@ def write_gta_page(site, groups, today, style_link):
     gtav_page = next((g for g in groups.values() if g["slug"].startswith("grand-theft-auto-v")), None)
     gtav_link = f' <a href="{BASE}games/{gtav_page["slug"]}/">GTA V on PS5 emulators</a> has every test report.' if gtav_page else ""
 
-    questions = [(q, a) for q, a in FAQ[:GTA_QUESTIONS] if a]
+    questions = [(q, faq_text(a, today)) for q, a in FAQ[:GTA_QUESTIONS] if a]
     qa = "".join(f"<h3>{e(q)}</h3><p>{e(a)}</p>" for q, a in questions)
     sources = "".join(f'<li><a href="{e(src["url"])}">{e(src["name"])}</a></li>' for src in status.get("sources") or []
                       if isinstance(src, dict) and str(src.get("url", "")).startswith("https://") and src.get("name"))
@@ -845,6 +1005,11 @@ def write_gta_page(site, groups, today, style_link):
       <p>The score adds up milestones anyone can check. It reaches 100% only once GTA 6 is playable at 30+ FPS on a PS5 emulator.</p>
       {''.join(steps)}
     </section>
+    {f"""<section class="gp-text">
+      <h2>Readiness by day, and why it changed</h2>
+      {readiness_chart(history)}
+      {readiness_why(history)}
+    </section>""" if len(history) >= 2 else ""}
     <section class="gp-text">
       <h2>GTA 6 and GTA V on each PS5 emulator</h2>
       <p>GTA V's PS5 version runs on the same RAGE engine as GTA 6, so it's the best early sign of how GTA 6 will fare.{gtav_link}</p>
@@ -880,6 +1045,87 @@ def write_404(site, style_link):
     (site / "404.html").write_text(page, encoding="utf-8")
 
 
+def write_feed(site, groups, today, limit=50):
+    """feed.xml: an Atom feed with an entry each time a game reaches an emulator's top tier, newest first, so feed
+    readers and aggregators pick up new playable games. The date is the first top-tier report when the kept history
+    goes back that far, else the latest test."""
+    phrase = {"SharpEmu": "is playable on SharpEmu", "KytyPS5": "gets in-game on KytyPS5", "AnyPS5": "is playable on AnyPS5"}
+    entries = []
+    for g in groups.values():
+        for project, row in g["rows"].items():
+            reports = DETAILS.reports(project, g) if DETAILS else []
+            st = DETAILS.of(project, g) if DETAILS else None
+            complete = not st or not st.get("reports") or st["reports"] <= len(reports)
+            reached = min((r["date"] for r in reports if r.get("status") == TOP_STATUS[project] and r.get("date")),
+                          default=None) if complete else None
+            day = (reached or row.get("tested") or "")[:10]
+            if day:
+                entries.append((day, project, g, row))
+    entries.sort(key=lambda x: (x[0], x[2]["title"]), reverse=True)
+    items = []
+    for day, project, g, row in entries[:limit]:
+        url = f"{SITE}games/{g['slug']}/"
+        detail = [f"{g['title']} {phrase[project]} on PC, according to a test report from {long_date(day)}."]
+        if row.get("fps"):
+            detail.append(f"The tester reported {row['fps']} FPS.")
+        items.append(f"""  <entry>
+    <title>{e(g['title'])} {phrase[project]}</title>
+    <link href="{e(url)}"/>
+    <id>{e(url)}#{project.lower()}-{day}</id>
+    <updated>{day}T00:00:00Z</updated>
+    <summary>{e(" ".join(detail))}</summary>
+  </entry>""")
+    (site / "feed.xml").write_text(f"""<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>PS5 Emulation Tracker: new playable games</title>
+  <subtitle>PS5 games as they reach gameplay on AnyPS5, KytyPS5 and SharpEmu on PC.</subtitle>
+  <link rel="self" href="{SITE}feed.xml"/>
+  <link href="{SITE}games/"/>
+  <id>{SITE}feed.xml</id>
+  <updated>{today}T00:00:00Z</updated>
+  <author><name>PS5 Emulation Tracker</name></author>
+{chr(10).join(items)}
+</feed>
+""", encoding="utf-8")
+    return len(items)
+
+
+def write_llms(site, groups, today):
+    """llms.txt (llmstxt.org): a plain summary of the site and its data files for AI assistants and agents, so
+    they quote the day's figures and cite the right page instead of guessing."""
+    counts = {p: sum(p in g["rows"] for g in groups.values()) for p in ORDER}
+    six = (load(site / "data", "gta", {}).get("gta6") or {}).get("projects") or {}
+    best = max((STAGE_RANK.index(r["stage"]) for r in six.values() if r and r.get("stage") in STAGE_RANK), default=0)
+    gta6 = (f"The furthest any emulator has got with GTA 6: {GTA_STAGE[STAGE_RANK[best]].lower()}." if best
+            else "No PS5 emulator runs GTA 6 yet.")
+    (site / "llms.txt").write_text(f"""# PS5 Emulation Tracker
+
+> A daily tracker of PS5 emulation on PC: the open-source emulators AnyPS5, KytyPS5 and SharpEmu, every PS5 game
+> that reaches gameplay on one of them, and a GTA 6 emulation readiness score built from checkable milestones.
+> Updated {today}. Not affiliated with Sony, Rockstar or the emulator projects; it never links to exploits,
+> jailbreak tools or game downloads.
+
+As of {today}, {len(groups)} PS5 games reach gameplay on at least one emulator: {counts['SharpEmu']} are playable
+on SharpEmu, {counts['KytyPS5']} get in-game on KytyPS5 and {counts['AnyPS5']} are playable on AnyPS5.
+{gta6}
+
+## Pages
+
+- [Tracker]({SITE}): each emulator's progress, charts over time, the playable games and the FAQ
+- [Can you play GTA 6 on PC?]({SITE}gta-6/): the readiness score, each milestone, and why it changed by day
+- [Every game]({SITE}games/): one page per game with its status and test reports on every emulator
+- [How this is measured]({SITE}#method): what each figure means and where it comes from
+
+## Data (JSON, CC BY 4.0)
+
+- [Daily snapshots]({SITE}data/snapshots.json): one row per emulator per day
+- [Compatibility history]({SITE}data/compat_history.json): games at each stage, by day
+- [Playable games]({SITE}data/playable_games.json): games at each emulator's top tier, with test date and FPS
+- [GTA results]({SITE}data/gta.json): the best stage each emulator has reached on GTA 6 and GTA V (PS5)
+- [New playable games feed]({SITE}feed.xml): Atom
+""", encoding="utf-8")
+
+
 def write_sitemap(site, groups, today, gta_page=False):
     urls = [(SITE, today)] + ([(SITE + "gta-6/", today)] if gta_page else []) + ([(SITE + "games/", today)] if groups else [])
     urls += sorted((f"{SITE}games/{g['slug']}/", g["tested"] or today) for g in groups.values())
@@ -909,6 +1155,22 @@ def replace_once(text, pattern, repl, what):
     return new
 
 
+def allow_inline_scripts(page):
+    """The CSP forbids inline scripts, so the two the home page needs are allowed by their hashes: Angular's import
+    map, which carries the integrity hashes of lazily loaded files (the QR code library) and changes with every
+    build, and the prefetch rules. Once a hash is listed, browsers ignore 'inline-speculation-rules', so the rules
+    need theirs too."""
+    blocks = re.findall(r'<script type="(?:importmap|speculationrules)">(.*?)</script>', page, re.S)
+    if not blocks:
+        return page
+    hashes = " ".join(f"'sha256-{base64.b64encode(hashlib.sha256(b.encode('utf-8')).digest()).decode()}'" for b in blocks)
+    new, n = re.subn(r"(Content-Security-Policy\" content=\"[^\"]*?script-src 'self')",
+                     lambda c: f"{c.group(1)} {hashes}", page, count=1)
+    if n != 1:
+        sys.exit("seo.py: couldn't find script-src in index.html's CSP")
+    return new
+
+
 def main():
     site = Path(sys.argv[1]).resolve()
     today = dt.datetime.now(dt.timezone.utc).date().isoformat()
@@ -919,6 +1181,7 @@ def main():
                         "<app-root> block")
     page = replace_once(page, r'<script type="application/ld\+json">.*?</script>',
                         f'<script type="application/ld+json">{ld}</script>', "structured data")
+    page = allow_inline_scripts(page)
     if description:
         for attr in ('name="description"', 'property="og:description"', 'name="twitter:description"'):
             page = replace_once(page, rf'<meta {attr} content="[^"]*">',
@@ -944,6 +1207,8 @@ def main():
     (site / "data" / "game_details.json").unlink(missing_ok=True)  # build input only; the app doesn't read it
     groups = game_groups(load(site / "data", "playable_games", []))
     write_game_pages(site, groups, today, style_link)
+    write_feed(site, groups, today)
+    write_llms(site, groups, today)
     gta_page = write_gta_page(site, groups, today, style_link)
     write_404(site, style_link)
     add_page_links(site, groups)

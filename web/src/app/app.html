@@ -49,7 +49,11 @@
     <div class="hero-foot">
       <div class="livebar" role="status">
         <span class="live-now"><span class="pulse" [class.on]="!!svc.liveAt()" [class.busy]="svc.loading()" aria-hidden="true"></span>{{ liveStatus() }}</span>
-        <span class="muted">History saved through {{ savedThrough() ? longDate(savedThrough()!) : '…' }}</span>
+        @if (staleDays(); as n) {
+          <span class="stale with-icon" role="status"><app-icon name="info" [size]="14" />Daily history hasn't updated for {{ n }} days, so charts and game lists may be out of date. Live figures still load.</span>
+        } @else {
+          <span class="muted">History saved through {{ savedThrough() ? longDate(savedThrough()!) : '…' }}</span>
+        }
         <button type="button" class="btn small" (click)="refresh()" [disabled]="svc.loading()">
           <app-icon name="refresh" [size]="13" [class.spin]="svc.loading()" />{{ svc.loading() ? 'Refreshing' : 'Refresh' }}
         </button>
@@ -237,6 +241,17 @@
         @if (gameQuery()) { <span class="note num">{{ fmt(gameMatches()) }} matching</span> }
         @if (hasGamePages()) { <a class="all-games with-icon" href="games/"><app-icon name="grid" [size]="14" />Every game</a> }
       </div>
+      @if (recentGames(); as recent) {
+        @if (recent.length) {
+          <p class="recent-games"><b>Reported in the last 7 days:</b>
+            @for (g of recent.slice(0, 8); track g.title; let last = $last) {
+              @if (gamePage(g); as page) { <a [href]="page">{{ g.title }}</a> } @else { <span>{{ g.title }}</span> }
+              <span class="note">({{ g.project }})</span>{{ last ? '' : ',' }}
+            }
+            @if (recent.length > 8) { <span>and {{ recent.length - 8 }} more.</span> }
+          </p>
+        }
+      }
       @if (svc.games() === null) {
         <div class="card"><div class="chart skeleton"></div></div>
       }
@@ -321,43 +336,43 @@
 
     <section class="sec faq" id="faq" aria-labelledby="faq-h">
       <h2 id="faq-h">Questions</h2>
-      <details open>
+      <details id="faq-gta6-pc" open>
         <summary>Can I play GTA 6 on PC with a PS5 emulator?</summary>
-        <p>Not yet, and not at launch. GTA 6 comes out on PS5 and Xbox Series X|S on November 19, 2026. Before any emulator can try it, someone has to copy the game off a PS5, and that's blocked for now: GTA 6 reportedly needs firmware 14.10, and there's no public way to copy games off a PS5 on that firmware. Even then, no PS5 emulator runs a game this size yet. The <a href="#gta6">GTA 6 readiness score</a> above tracks each step@if (hasGamePages()) {, and <a href="gta-6/">GTA 6 on PC</a> has the full answer}.</p>
+        <p>@if (gtaDays()) {Not yet, and not at launch. GTA 6 comes out} @else {Not yet. GTA 6 came out} on PS5 and Xbox Series X|S on November 19, 2026. Before any emulator can try it, someone has to copy the game off a PS5, and that's blocked for now: GTA 6 reportedly needs firmware 14.10, and there's no public way to copy games off a PS5 on that firmware. Even then, no PS5 emulator runs a game this size yet. The <a href="#gta6">GTA 6 readiness score</a> above tracks each step@if (hasGamePages()) {, and <a href="gta-6/">GTA 6 on PC</a> has the full answer}.</p>
       </details>
-      <details>
+      <details id="faq-gta6-firmware">
         <summary>Does GTA 6 need PS5 firmware 14.10?</summary>
         <p>Reportedly. A datamine of GTA 6's PlayStation Store listing says it needs firmware 14.10 or newer; Rockstar and Sony haven't confirmed it. Public PS5 jailbreaks only work up to firmware 13.60, so a jailbroken console would have to update, and lose its jailbreak, to play it.</p>
       </details>
-      <details>
+      <details id="faq-gta6-pc-release">
         <summary>When is GTA 6 coming to PC?</summary>
         <p>Rockstar hasn't announced a PC version. GamesBeat reported on October 13, 2026 that one is planned for early 2027, citing four industry sources. GTA V took about 18 months to reach PC.</p>
       </details>
-      <details>
+      <details id="faq-gtav">
         <summary>Does GTA V run on PS5 emulators?</summary>
         <p>The PS5 version of GTA V gets in-game on KytyPS5 and SharpEmu, and reaches the menus on AnyPS5. It uses the same RAGE engine as GTA 6, which makes it the best early sign of how GTA 6 will fare. The table in the GTA 6 section shows the latest result for each emulator.</p>
       </details>
-      <details>
+      <details id="faq-working">
         <summary>Is there a working PS5 emulator?</summary>
         <p>Yes, in early form. AnyPS5, KytyPS5 and SharpEmu all run some PS5 games on Windows today. About 200 games reach gameplay on at least one of them, out of more than 9,000 PS5 titles; see <a href="#playable">Playable games</a> for the list, with frame rates where testers reported them.</p>
       </details>
-      <details>
+      <details id="faq-best">
         <summary>Which PS5 emulator is the most advanced?</summary>
         <p>It depends on the measure. AnyPS5 publishes the most detailed progress figure, the share of PS5 system functions it implements; KytyPS5 gets the most games in-game; SharpEmu has the most games marked fully playable. The <a href="#projects">project cards</a> show each one's figures, updated live.</p>
       </details>
-      <details>
+      <details id="faq-legal">
         <summary>Is PS5 emulation legal?</summary>
         <p>Emulators themselves are generally legal to make and use. Downloading games you don't own is piracy. These projects expect you to use your own console's games and firmware. Beware sites offering "PS5 emulator downloads": the real projects are free and only on the GitHub pages linked below.</p>
       </details>
-      <details>
+      <details id="faq-pcsx5">
         <summary>Is PCSX5 a real PS5 emulator?</summary>
         <p>There's no sign it is. PCSX5 publishes no source code and no compatibility list, and nobody outside the project has shown it running a PS5 game. Its name copies PCSX2, the real PS2 emulator, as the fake PCSX4 did before it. Don't download or install it. The PS5 emulators that do run games, <a href="#projects">AnyPS5, KytyPS5 and SharpEmu</a>, are free and open source on GitHub.</p>
       </details>
-      <details>
+      <details id="faq-pc-games-on-ps5">
         <summary>Can a PS5 play PC games?</summary>
         <p>Only a jailbroken one, and that's the reverse of emulation. Since September 2026, hobbyists have ported Wine, the Windows layer the Steam Deck uses, into a PS5 app and written a Vulkan graphics driver for the PS5's chip. An open-source launcher called Playden installs games from the owner's own Steam library. Its compatibility list showed 143 of 207 tested Windows games working on October 26, 2026. It needs a jailbroken PS5 on older firmware, it's alpha software, and games with kernel anti-cheat, such as Marvel Rivals, don't run. It doesn't help run PS5 games on PC, which is what this tracker follows.</p>
       </details>
-      <details>
+      <details id="faq-updates">
         <summary>How often is this tracker updated?</summary>
         <p>Live figures load from GitHub and each project's site when you open the page, and every 15 minutes after that. Daily history, game lists and the GTA 6 score update every 3 hours.</p>
       </details>
@@ -394,7 +409,7 @@
       <div>
         <h2 class="finale-h">This site</h2>
         <ul class="finale-links">
-          @if (hasGamePages()) { <li><a href="games/">Every game</a></li> }
+          @if (hasGamePages()) { <li><a href="games/">Every game</a></li><li><a href="gta-6/">GTA 6 on PC</a></li><li><a href="feed.xml">Feed of new playable games</a></li> }
           <li><a href="#method">How this is measured</a></li>
           <li><a href="#top">Back to the top</a></li>
         </ul>

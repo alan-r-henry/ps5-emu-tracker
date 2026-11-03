@@ -74,6 +74,14 @@
 .gp-meter::-moz-meter-bar { background: var(--fg); }
 .gp-ready h3 { margin: 22px 0 6px; font-size: var(--t-body); color: var(--muted); }
 .gp-steps { list-style: none; margin: 0; padding: 0; }
+.gp-chart { display: block; width: 100%; max-width: 520px; height: auto; margin: 8px 0 16px; overflow: visible; }
+.gp-chart .gp-grid { stroke: var(--line); stroke-width: 1; }
+.gp-chart .gp-tick { fill: var(--muted); font-size: 16px; font-variant-numeric: tabular-nums; }
+.gp-chart .gp-line { fill: none; stroke: var(--fg); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.gp-chart .gp-dots circle { fill: var(--fg); }
+.gp-chart .gp-end { fill: var(--fg); font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.gp-changes { padding-left: 1.2em; }
+.gp-changes li { margin: 6px 0; }
 .gp-steps li { display: grid; grid-template-columns: 1.2em minmax(0, 1fr) auto; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .gp-steps .done .gp-step-mark { color: var(--ok); font-weight: 700; }
 .gp-steps .todo .gp-step-mark { color: var(--muted); }
@@ -98,6 +106,9 @@
 .gp-chips + .gp-meta { margin-top: 0; }
 .gp-tools { margin-top: 24px; }
 html:not(.js) .gp-tools { display: none; }  /* theme.js sets .js before first paint, so the menu never pops in */
+.gp-index li[hidden] { display: none; }
+.gp-nomatch { margin-top: 18px; color: var(--muted); }
+.gp-send { margin-top: 10px; color: var(--muted); }
 .gp-chip { font-size: var(--t-body); font-weight: 600; font-stretch: 90%; padding: 1px 8px; border: 1px solid var(--line); color: var(--muted); font-variant-numeric: tabular-nums; }
 
 .gp-foot { border-top: 2px solid var(--fg); padding-top: 18px; padding-bottom: 36px; color: var(--muted); font-size: var(--t-body); }

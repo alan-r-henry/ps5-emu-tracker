@@ -46,6 +46,17 @@ export interface LineSeries {
           }
         </svg>
       }
+      <!-- The same figures as a table, for screen readers; the drawing is only a picture of them. The wrapper
+           hides it, since a table ignores the 1px box that .sr-only gives it. -->
+      <div class="sr-only"><table>
+        <caption>{{ label() }}</caption>
+        <thead><tr><th scope="col">Day</th>@for (s of series(); track s.name) { <th scope="col">{{ s.name }}</th> }</tr></thead>
+        <tbody>
+          @for (d of dates(); track d) {
+            <tr><th scope="row">{{ shortDate(d) }}</th>@for (s of series(); track s.name) { <td>{{ cell(s, d) }}</td> }</tr>
+          }
+        </tbody>
+      </table></div>
       @if (tip(); as t) {
         <div class="tip" [style.left.px]="t.left" [style.top.px]="12">
           <div class="tip-d">{{ t.date }}</div>
@@ -67,6 +78,7 @@ export class LineChart {
   protected readonly top = 12;
   private readonly bottom = 28;
   protected readonly fmt = fmt;
+  protected readonly shortDate = shortDate;
   protected readonly width = signal(0);
   protected readonly hoverDate = signal<string | null>(null);
   private readonly box = viewChild.required<ElementRef<HTMLElement>>('box');
@@ -111,6 +123,12 @@ export class LineChart {
     for (let i = 1; i < items.length; i++) if (items[i].y - items[i - 1].y < 20) items[i].y = items[i - 1].y + 20;
     return items;
   });
+
+  /** A series' value on one day for the screen-reader table, or nothing when it has no point that day. */
+  protected cell(s: LineSeries, date: string): string {
+    const p = s.points.find((pt) => pt.date === date);
+    return p ? fmt(p.value) + this.unit() + (p.live ? ' (live)' : '') : '';
+  }
 
   protected readonly tip = computed(() => {
     const hd = this.hoverDate();

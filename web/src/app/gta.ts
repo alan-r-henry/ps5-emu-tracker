@@ -352,17 +352,20 @@ export class GtaReadiness {
     return points.length > 1 ? [{ name: 'Readiness', color: 'var(--fg)', points }] : [];
   });
 
-  /** Today against the last saved day before it, milestone by milestone. */
+  /** Today against the last saved day the score was different (or yesterday, if it never was), milestone by milestone. */
   protected readonly why = computed(() => {
     const c = this.current();
-    const prev = this.days().filter((x) => x.day < this.today).at(-1);
-    if (!c?.lib || !prev) return null;
-    const before = milestonesFor(prev.inputs);
+    if (!c?.lib) return null;
     const after = milestonesFor(c);
+    const now = total(after);
+    const earlier = this.days().filter((x) => x.day < this.today);
+    const prev = [...earlier].reverse().find((x) => Math.abs(x.points - now) >= 0.05) ?? earlier.at(-1);
+    if (!prev) return null;
+    const before = milestonesFor(prev.inputs);
     return {
       since: prev.day,
       before: total(before),
-      after: total(after),
+      after: now,
       changes: this.diff(before, after, prev.inputs, c),
       biggestDrop: this.biggestDrop(),
     };

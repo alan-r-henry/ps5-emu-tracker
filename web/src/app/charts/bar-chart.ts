@@ -35,6 +35,17 @@ export interface BarDatum {
           }
         </svg>
       }
+      <!-- The same figures as a table, for screen readers; the drawing is only a picture of them. The wrapper
+           hides it, since a table ignores the 1px box that .sr-only gives it. -->
+      <div class="sr-only"><table>
+        <caption>{{ label() }}</caption>
+        <thead><tr><th scope="col">Day</th><th scope="col">Merged pull requests</th><th scope="col">Commits</th></tr></thead>
+        <tbody>
+          @for (d of data(); track d.day) {
+            <tr><th scope="row">{{ shortDate(d.day) }}{{ d.live ? ' (live)' : '' }}</th><td>{{ fmt(d.value) }}</td><td>{{ d.live ? '' : fmt(d.commits) }}</td></tr>
+          }
+        </tbody>
+      </table></div>
       @if (hovered(); as h) {
         <div class="tip" [style.left.px]="tipLeft()" [style.top.px]="tipTop()">
           <div class="tip-d">{{ h.date }}{{ h.live ? ' · live' : '' }}</div>
@@ -54,6 +65,7 @@ export class BarChart {
   protected readonly top = 8;
   protected readonly bottom = 26;
   protected readonly fmt = fmt;
+  protected readonly shortDate = shortDate;
   protected readonly hover = signal<number | null>(null);
   protected readonly width = signal(0);
   private readonly box = viewChild.required<ElementRef<HTMLElement>>('box');

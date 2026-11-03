@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, afterNextRender, computed, effect, inject, signal } from '@angular/core';
 import { BarChart, BarDatum } from './charts/bar-chart';
 import { LineChart, LineSeries } from './charts/line-chart';
 import { FundButton } from './fund';
@@ -109,9 +109,27 @@ export class App {
     void this.svc.refreshAll();
     const clock = setInterval(() => this.now.set(new Date()), 30_000);
     const auto = setInterval(() => void this.svc.refreshAll(), AUTO_REFRESH_MS);
+    // A link to one question (#faq-pcsx5) opens that answer, on arrival and when the address changes.
+    const openAnswer = () => {
+      const el = location.hash.length > 1 ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
+      if (el instanceof HTMLDetailsElement) {
+        el.open = true;
+        el.scrollIntoView({ behavior: 'instant' });  // a smooth glide down a page this long is slow and gets cut short
+      }
+    };
+    afterNextRender(openAnswer);
+    addEventListener('hashchange', openAnswer);
+    // The charts and game lists above the FAQ arrive later and push it down, so jump again once they're in.
+    let settled = false;
+    effect(() => {
+      if (settled || !this.svc.history() || this.svc.games() === null) return;
+      settled = true;
+      if (location.hash.startsWith('#faq-')) setTimeout(openAnswer, 400);
+    });
     inject(DestroyRef).onDestroy(() => {
       clearInterval(clock);
       clearInterval(auto);
+      removeEventListener('hashchange', openAnswer);
     });
   }
 
@@ -160,6 +178,14 @@ export class App {
   protected readonly savedThrough = computed(() => {
     const dates = this.svc.history()?.snapshots.map((s) => s.date) ?? [];
     return dates.length ? dates.reduce((a, b) => (b > a ? b : a)) : null;
+  });
+
+  /** Days since the last saved snapshot, once it's more than 2 (the collector runs every 3 hours), else null. */
+  protected readonly staleDays = computed(() => {
+    const last = this.savedThrough();
+    if (!last) return null;
+    const days = Math.round((Date.parse(this.today()) - Date.parse(last)) / 86_400_000);
+    return days > 2 ? days : null;
   });
 
   protected readonly liveStatus = computed(() => {
@@ -518,6 +544,16 @@ export class App {
   }
 
   /** The game's own page, when the published build has one. */
+  /** Games with a top-tier test report from the last 7 days, newest first, one entry per game. */
+  protected readonly recentGames = computed(() => {
+    const since = daysBefore(this.today(), 7);
+    const seen = new Set<string>();
+    return [...(this.svc.games() ?? [])]
+      .filter((g) => g.tested && g.tested.slice(0, 10) >= since)
+      .sort((a, b) => b.tested!.localeCompare(a.tested!) || (b.ratings ?? 0) - (a.ratings ?? 0))
+      .filter((g) => !seen.has(g.title) && !!seen.add(g.title));
+  });
+
   protected gamePage(g: PlayableGame): string | null {
     return g.page && GAME_PAGE.test(g.page) ? g.page : null;
   }

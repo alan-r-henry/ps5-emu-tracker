@@ -12,7 +12,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data: https://image.api.playstation.com https://avatars.githubusercontent.com https://*.goatcounter.com; connect-src 'self' https://api.github.com https://boykopovar.github.io https://alxcbtw.github.io https://kytyps5.github.io https://sharpemu.app; manifest-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'; upgrade-insecure-requests; require-trusted-types-for 'script'; trusted-types angular angular#bundler">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'inline-speculation-rules'; style-src 'self'; font-src 'self'; img-src 'self' data: https://image.api.playstation.com https://avatars.githubusercontent.com https://*.goatcounter.com; connect-src 'self' https://api.github.com https://boykopovar.github.io https://alxcbtw.github.io https://kytyps5.github.io https://sharpemu.app; manifest-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'; upgrade-insecure-requests; require-trusted-types-for 'script'; trusted-types angular angular#bundler">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>PS5 Emulation Tracker: GTA 6, GTA V &amp; PS5 Emulators on PC</title>
   <base href="/ps5-emu-tracker/">
@@ -26,6 +26,12 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="manifest" href="site.webmanifest">
+  <link rel="alternate" type="application/atom+xml" href="feed.xml" title="New playable PS5 games">
+  <!-- Browsers that support it fetch a game page while the pointer rests on its link. The CSP's
+       'inline-speculation-rules' allows only rules like these, never inline JavaScript. -->
+  <script type="speculationrules">{"prefetch": [{"where": {"href_matches": ["games/*", "gta-6/"]}, "eagerness": "moderate"}]}</script>
+  <!-- Cover art for the playable games comes from Sony's image server; connecting early saves a round trip. -->
+  <link rel="preconnect" href="https://image.api.playstation.com">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="PS5 Emulation Tracker">
   <meta property="og:locale" content="en_US">

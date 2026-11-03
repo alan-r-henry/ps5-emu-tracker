@@ -141,18 +141,37 @@ def kyty_statuses(index):
     return Counter(g.get("overall") for g in games if isinstance(g, dict))
 
 
-def sharp_statuses(site_dir, rev=None):
+SHARP_COMPAT = "src/content/compat/"
+
+
+def sharp_entries(site_dir, rev=None):
+    """SharpEmu's report files as (path, text). Until October 27, 2026 they sat in one folder, one per PS5 game;
+    since then there's a folder per OS (windows/, macos/), and PS4 games too."""
     if rev is None:
-        texts = [f.read_text(encoding="utf-8") for f in (site_dir / "src/content/compat").glob("*.md")]
-    else:
-        names = git(site_dir, "ls-tree", "--name-only", rev, "src/content/compat/").split()
-        texts = [git(site_dir, "show", f"{rev}:{n}") for n in names if n.endswith(".md")]
-    c = Counter()
-    for t in texts:
-        m = re.search(r'^status:\s*"?([a-z-]+)"?', t, re.M)
-        if m:
-            c[m.group(1)] += 1
-    return c
+        return [(f.relative_to(site_dir).as_posix(), f.read_text(encoding="utf-8"))
+                for f in sorted((site_dir / SHARP_COMPAT).rglob("*.md"))]
+    names = git(site_dir, "ls-tree", "-r", "--name-only", rev, SHARP_COMPAT).split()
+    return [(n, git(site_dir, "show", f"{rev}:{n}")) for n in names if n.endswith(".md")]
+
+
+def sharp_best(entries):
+    """One report per PS5 game, {titleId: (path, front matter, text)}: the furthest stage on any OS, then the
+    newest test. PS4 games (CUSA IDs) are left out, since this tracker follows PS5 emulation."""
+    order = [key for key, _ in PROJECTS["SharpEmu"]["ladder"]]
+    best = {}
+    for path, text in entries:
+        front = front_matter(text)
+        tid = front.get("titleId") or Path(path).stem
+        if not tid.upper().startswith("PPSA") or front.get("status") not in order:
+            continue
+        key = (order.index(front["status"]), front.get("testedDate") or "")
+        if tid not in best or key > best[tid][0]:
+            best[tid] = (key, path, front, text)
+    return {tid: (path, front, text) for tid, (_, path, front, text) in best.items()}
+
+
+def sharp_statuses(site_dir, rev=None):
+    return Counter(front["status"] for _, front, _ in sharp_best(sharp_entries(site_dir, rev)).values())
 
 
 def anyps5_statuses(roadmap):
@@ -199,7 +218,7 @@ def backfill_compat(cache, history):
     rows = []
     sources = {
         "KytyPS5": (PROJECTS["KytyPS5"]["site"], "src/data/compat-index.json"),
-        "SharpEmu": (PROJECTS["SharpEmu"]["site"], "src/content/compat"),
+        "SharpEmu": (PROJECTS["SharpEmu"]["site"], SHARP_COMPAT),
     }
     for name, (repo, path) in sources.items():
         site = sync_clone(cache, repo)
@@ -218,6 +237,44 @@ def backfill_compat(cache, history):
             if sum(counts.values()):
                 rows += compat_rows(day, name, counts)
     return upsert(history, rows, ["date", "project", "rank"])
+
+
+def check_health(snaps, snapshots):
+    """Stop before saving when a project's compatibility list suddenly loses over half its games. So far that has
+    always meant its site changed format (SharpEmu, October 27, 2026), not that games stopped working. The failed
+    run emails the repository owner, and the site keeps the last good data until the collector is fixed."""
+    problems = []
+    for snap in snaps:
+        prev = max((s for s in snapshots if s["project"] == snap["project"] and s["date"] < snap["date"]
+                    and s.get("games_tested")), key=lambda s: s["date"], default=None)
+        if prev and (snap.get("games_tested") or 0) < prev["games_tested"] / 2:
+            problems.append(f"{snap['project']} reads {snap.get('games_tested') or 0} games tested, down from "
+                            f"{prev['games_tested']} on {prev['date']}")
+    for problem in problems:
+        print(f"::error::{problem}. Its compatibility list has probably changed format; nothing was saved.")
+    if problems:
+        sys.exit(1)
+
+
+def repair_sharp_gaps(cache, snapshots, compat_hist):
+    """Recount saved days where SharpEmu shows no games tested, from the site's git history. Its reports moved into
+    per-OS folders on October 27, 2026 and were read as nothing until the collector caught up. It only touches days
+    that still show nothing, so once they're fixed it costs nothing."""
+    days = sorted({s["date"] for s in snapshots if s["project"] == "SharpEmu" and not s.get("games_tested")})
+    if not days:
+        return compat_hist
+    site = sync_clone(cache, PROJECTS["SharpEmu"]["site"])
+    top, rows = PROJECTS["SharpEmu"]["top"], []
+    for day in days:
+        sha = git(site, "rev-list", "-1", f"--before={day}T23:59:59Z", "HEAD").strip()
+        counts = sharp_statuses(site, sha) if sha else Counter()
+        if not sum(counts.values()):
+            continue
+        for snap in snapshots:
+            if snap["project"] == "SharpEmu" and snap["date"] == day:
+                snap.update(games_tested=sum(counts.values()), games_top=counts.get(top, 0))
+        rows += compat_rows(day, "SharpEmu", counts)
+    return upsert(compat_hist, rows, ["date", "project", "rank"])
 
 
 FPS_RE = re.compile(
@@ -358,14 +415,10 @@ def playable_games(cache):
             tested=latest.get("testedDate") or g.get("latestTested"),
             url=f"https://kytyps5.github.io/game/{g['key']}")
 
-    site = cache / "sharpemu__sharpemu-site" / "src/content/compat"
-    for f in sorted(site.glob("*.md")):
-        text = f.read_text(encoding="utf-8")
-        front = dict(re.findall(r'^(\w+):\s*"?(.*?)"?\s*$', text.split("---")[1], re.M)) if text.startswith("---") else {}
+    for tid, (_, front, text) in sorted(sharp_best(sharp_entries(cache / "sharpemu__sharpemu-site")).items()):
         if front.get("status") != "playable":
             continue
         body = text.split("---", 2)[2] if text.count("---") >= 2 else text
-        tid = front.get("titleId", f.stem)
         add("SharpEmu", "Playable", tid, None, body, os=front.get("os"), hardware=front.get("hardware"),
             tested=front.get("testedDate"), url=f"https://sharpemu.app/game/{tid}")
 
@@ -436,20 +489,14 @@ def game_details(cache):
 
     # SharpEmu keeps one file per game and overwrites it with each new report, so its git history is the timeline.
     site = cache / "sharpemu__sharpemu-site"
-    folder = "src/content/compat/"
     revs = {}
-    for block in git(site, "log", "--format=@%H", "--name-only", "--", folder).split("@")[1:]:
+    for block in git(site, "log", "--format=@%H", "--name-only", "--", SHARP_COMPAT).split("@")[1:]:
         sha, *files = block.split()
         for f in files:
-            revs.setdefault(f, []).append(sha)
-    for f in sorted((site / folder).glob("*.md")):
-        path = folder + f.name
-        front = front_matter(f.read_text(encoding="utf-8"))
-        tid = front.get("titleId", f.stem)
-        if not front.get("status"):
-            continue
+            revs.setdefault(Path(f).stem, []).append((sha, f))
+    for tid, (_, front, _) in sorted(sharp_best(sharp_entries(site)).items()):
         seen, reports = set(), []
-        for sha in revs.get(path, [])[:HISTORY_PER_GAME * 2]:
+        for sha, path in revs.get(tid, [])[:HISTORY_PER_GAME * 3]:
             try:
                 text = git(site, "show", f"{sha}:{path}")
             except subprocess.CalledProcessError:
@@ -502,7 +549,7 @@ def gta_progress(cache):
     roadmap = fetch_json(ANYPS5_ROADMAP)
     kyty = fetch_json("https://kytyps5.github.io/data/compat-index.json")
     kyty = kyty.get("games", []) if isinstance(kyty, dict) else kyty
-    sharp_dir = cache / "sharpemu__sharpemu-site" / "src/content/compat"
+    sharp = sharp_best(sharp_entries(cache / "sharpemu__sharpemu-site"))
 
     def better(a, b):
         return b if a is None or STAGE_ORDER.index(b["stage"]) > STAGE_ORDER.index(a["stage"]) else a
@@ -530,10 +577,7 @@ def gta_progress(cache):
                 per["KytyPS5"] = better(per["KytyPS5"], {
                     "stage": stage, "tested": g.get("latestTested"), "fps": fps,
                     "url": f"https://kytyps5.github.io/game/{g['key']}"})
-        for f in sorted(sharp_dir.glob("*.md")):
-            text = f.read_text(encoding="utf-8")
-            front = dict(re.findall(r'^(\w+):\s*"?(.*?)"?\s*$', text.split("---")[1], re.M)) if text.startswith("---") else {}
-            tid = front.get("titleId", f.stem)
+        for tid, (_, front, text) in sharp.items():
             stage = COMMON_STAGE["SharpEmu"].get(front.get("status"))
             if tid in ids and stage:
                 per["SharpEmu"] = better(per["SharpEmu"], {
@@ -699,6 +743,8 @@ def main():
         sats.append({"repo": repo, "role": role, "stars": info["stargazers_count"],
                      "last_push": info["pushed_at"][:10], "commits_30d": n, "archived": info["archived"]})
 
+    compat_hist = repair_sharp_gaps(cache, snapshots, compat_hist)
+    check_health(snaps, snapshots)
     # Each day's best GTA stage per emulator, so the site can chart the readiness score day by day.
     gta = gta_progress(cache)
     for snap in snaps:
