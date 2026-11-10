@@ -26,7 +26,7 @@ TOP_TIER = {"AnyPS5": "playable", "KytyPS5": "in-game", "SharpEmu": "playable"}
 STAGE = {"none": "not tested", "boots": "boots", "menus": "reaches the menus", "ingame": "gets in-game",
          "playable": "is playable"}
 STAGE_RANK = ["none", "boots", "menus", "ingame", "playable"]
-GTA_QUESTIONS = 3  # the first entries of FAQ, repeated on the gta-6/ page
+GTA_QUESTIONS = 4  # the first entries of FAQ, repeated on the gta-6/ page
 FAQ = [
     ("Can I play GTA 6 on PC with a PS5 emulator?",
      "{gta6_lead} GTA 6 {gta6_verb} on PS5 and Xbox Series X|S on November 19, 2026. Before any "
@@ -40,11 +40,22 @@ FAQ = [
     ("When is GTA 6 coming to PC?",
      "Rockstar hasn't announced a PC version. GamesBeat reported on October 13, 2026 that one is planned for early "
      "2027, citing four industry sources. GTA V took about 18 months to reach PC."),
+    ("Could AI port GTA 6 to PC?",
+     "Not soon, and not without a copy of the game. Obbe Vermeij, a former Rockstar North technical director, "
+     "told Rock Paper Shotgun in November 2026 that somebody might take the PS5 version and get AI to convert "
+     "it, for tens of thousands of dollars in AI tokens. The closest real case was a much smaller game: one developer "
+     "spent three months and more than 500 billion tokens rebuilding Call of Duty: Modern Warfare 2, a 2009 PC "
+     "game, with AI agents, and 83% of its functions match the original byte for byte. A GTA 6 port would first "
+     "need the game copied off a PS5, the same firmware block emulators face. Take-Two has also stopped fan GTA "
+     "projects before: it had GitHub take down re3 and reVC, rebuilds of GTA III and Vice City, in 2021, then "
+     "sued their developers."),
     ("Does GTA V run on PS5 emulators?", None),  # written from the day's data below
     ("Is there a working PS5 emulator?", None),
     ("Is PS5 emulation legal?",
      "Emulators themselves are generally legal to make and use. Downloading games you don't own is piracy. "
-     "Beware sites offering PS5 emulator downloads: the real projects are free and only on their GitHub pages."),
+     "Beware sites offering PS5 emulator downloads: the real projects are free and only on their GitHub pages. "
+     "In October 2026, fake copies of AnyPS5 and KytyPS5 on GitHub were caught installing password-stealing "
+     "malware. There's no working GTA 6 PC download; any site offering one is a scam."),
     ("Is PCSX5 a real PS5 emulator?",
      "There's no sign it is. PCSX5 publishes no source code and no compatibility list, and nobody outside the "
      "project has shown it running a PS5 game. Its name copies PCSX2, the real PS2 emulator, as the fake PCSX4 did "
