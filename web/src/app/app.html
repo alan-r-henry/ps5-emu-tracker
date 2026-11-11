@@ -115,6 +115,12 @@
 
     <app-gta [libraries]="anyLib()" [snapshots]="svc.history()?.snapshots ?? []" [hasPage]="hasGamePages()" />
 
+    @defer (on viewport) {
+      <app-fps-demo />
+    } @placeholder {
+      <div class="fps-placeholder" id="fps"></div>
+    }
+
     <section class="sec" id="road" aria-labelledby="road-h">
       <div class="sec-head">
         <h2 id="road-h">Road to 100%</h2>

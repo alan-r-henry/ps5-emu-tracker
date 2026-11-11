@@ -503,6 +503,20 @@ td .tag.with-icon { display: inline-flex; margin-left: 6px; gap: 4px; }
 @media (hover: hover) and (pointer: fine) { .finale-links a:hover { background-size: 100% 0.45em; } }
 .finale-links a:focus-visible { background-size: 100% 0.45em; }
 
+/* ---- Frame rate demo: one live canvas per rate ---------------------------------------------------- */
+/* Holds the demo's space until its code loads, so the page doesn't jump. */
+.fps-placeholder { min-height: 560px; }
+.fps-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.fps-tools .chip { display: inline-flex; align-items: center; gap: 6px; }
+.fps-scenes { display: flex; flex-wrap: wrap; gap: 6px; }
+.fps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 10px var(--gutter); }
+/* Captions differ in length; the subgrid keeps every canvas on the same line. */
+.fps-panel { margin: 0; display: grid; grid-row: span 2; grid-template-rows: subgrid; gap: 8px; min-width: 0; }
+.fps-panel figcaption { display: grid; gap: 2px; align-content: start; }
+.fps-panel figcaption b { font-size: var(--t-bold); font-weight: 760; line-height: 1.1; }
+.fps-credit { margin: 0; max-width: 90ch; }
+.fps-panel canvas { display: block; width: 100%; aspect-ratio: 16 / 9; background: #14161b; border: 1px solid var(--line); border-radius: var(--radius); }
+
 /* ---- Bike fund (button in the top bar, dialog) ----------------------------------------------------- */
 .fund-btn {
   display: inline-flex; align-items: center; gap: 8px; flex: none; cursor: pointer;

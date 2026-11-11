@@ -11,6 +11,7 @@ import { daysBefore, fmt, longDate, pct, signed, timeAgo, utcDay } from './forma
 import { PlayableGame, ProjectDef, ProjectName, Snapshot } from './models';
 import { GTA6_RELEASE, PROJECTS, PS5_CATALOG_FALLBACK } from './projects';
 import { TrackerService } from './tracker.service';
+import { FpsDemo } from './fps-demo';
 
 interface Stat {
   label: string;
@@ -79,7 +80,7 @@ function readTheme(): Theme {
 
 @Component({
   selector: 'app-root',
-  imports: [BarChart, LineChart, Icon, FundButton, GtaReadiness, ContributorsBoard],
+  imports: [BarChart, LineChart, Icon, FundButton, GtaReadiness, ContributorsBoard, FpsDemo],
   templateUrl: './app.html',
 })
 export class App {
